@@ -1,4 +1,4 @@
-from threading import Thread
+from multiprocessing import Process
 from django.http import HttpResponse
 from django.shortcuts import render
 
@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 meta_channel = MetaChannel(initiative="California Report Card")
-do_threading = True
 
 
 def count_and_print():
@@ -22,13 +21,13 @@ def count_and_print():
 
 
 def index(request):
-    thread = Thread(target=count_and_print)
-    thread.start()
+    p = Process(target=count_and_print)
+    p.start()
+    p.join()
     return HttpResponse("Welcome to the CParte application!")
 
 
 def posts(request):
-    do_threading = False
     latest_campaigns = Campaign.objects.all()[:5]
     context = {'latest_campaigns': latest_campaigns}
     return render(request, 'cparte/posts.html', context)
