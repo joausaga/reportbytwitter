@@ -892,6 +892,7 @@ class Twitter(SocialNetwork):
         listener = TwitterListener(manager)
         self.stream = tweepy.Stream(self.auth_handler, listener)
         self.stream.filter(follow=followings, track=hashtags, async=True)
+        logger.info("Starting to listen the Twitter Stream")
 
     def post_public(self, message):
         try:
@@ -1002,6 +1003,7 @@ class Twitter(SocialNetwork):
 
     def get_name(self):
         return self.name
+
 
 class TwitterListener(tweepy.StreamListener):
     manager = None
