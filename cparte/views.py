@@ -23,7 +23,6 @@ def count_and_print():
 def index(request):
     p = Process(target=count_and_print)
     p.start()
-    p.join()
     return HttpResponse("Welcome to the CParte application!")
 
 
