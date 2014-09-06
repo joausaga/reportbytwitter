@@ -1,0 +1,9 @@
+{% if latest_campaigns %}
+    <ul>
+    {% for campaign in latest_campaigns %}
+        <li><a href="/campaigns/{{ campaign.id }}/">{{ campaign.name }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No campaigns are available.</p>
+{% endif %}
