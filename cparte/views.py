@@ -1,3 +1,4 @@
+from threading import Thread
 from django.http import HttpResponse
 from django.shortcuts import render
 
@@ -10,13 +11,24 @@ logger = logging.getLogger(__name__)
 
 
 meta_channel = MetaChannel(initiative="California Report Card")
+do_threading = True
+
+
+def count_and_print():
+    a = 0
+    while a <= 1000000:
+        a += 1
+        logger.info(a)
 
 
 def index(request):
+    thread = Thread(target=count_and_print)
+    thread.start()
     return HttpResponse("Welcome to the CParte application!")
 
 
 def posts(request):
+    do_threading = False
     latest_campaigns = Campaign.objects.all()[:5]
     context = {'latest_campaigns': latest_campaigns}
     return render(request, 'cparte/posts.html', context)
