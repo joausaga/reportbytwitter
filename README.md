@@ -8,7 +8,7 @@ Cparte --the application available so far-- aims at enabling public institutions
 Quick start
 -----------
 
-1. Add "cparte" to your INSTALLED_APPS setting like this::
+1. Add "cparte" to your INSTALLED_APPS setting like this:
 
       ```
       INSTALLED_APPS = (
@@ -17,7 +17,7 @@ Quick start
       )
       ```
 
-2. Include the cparte URLconf in your project urls.py like this::
+2. Include the cparte URLconf in your project urls.py like this:
 
       `url(r'^cparte/', include('cparte.urls')),`
 
