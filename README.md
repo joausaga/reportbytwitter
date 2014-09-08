@@ -28,6 +28,6 @@ Dependencies
 
 1. [Django Framework](https://www.djangoproject.com/) `pip install Django`
 2. [MySQL](http://www.mysql.com) database and its corresponding python package `pip install MySQL-python`
-3. [Tweepy](http://www.tweepy.org) a python-based Twitter API client `pip install tweepy'
+3. [Tweepy](http://www.tweepy.org) a python-based Twitter API client `pip install tweepy`
 4. [Django Admin Bootstrapped](https://riccardo.forina.me/bootstrap-your-django-admin-in-3-minutes) App `pip install django-admin-bootstrapped`
 5. [Django Bootstrap3](https://github.com/dyve/django-bootstrap3) App `pip install django-bootstrap3`
