@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class Channel(models.Model):
     name = models.CharField(max_length=50)
     enabled = models.BooleanField(default=False)
+    status = models.BooleanField(default=False, blank=True, editable=False)
     consumer_key = models.CharField(max_length=100)
     consumer_secret = models.CharField(max_length=100)
     access_token = models.CharField(max_length=100)
@@ -30,6 +31,14 @@ class Channel(models.Model):
 
     def __unicode__(self):
         return self.name
+
+    def on(self):
+        self.status = True
+        self.save()
+
+    def off(self):
+        self.status = False
+        self.save()
 
 
 class Message(models.Model):
@@ -248,95 +257,80 @@ class AppPost(models.Model):
 
 
 class MetaChannel():
-    channels = {'Twitter': None, 'Facebook': None, 'Google Plus': None}
-    initiative = None
+    channels = {'twitter': None, 'facebook': None, 'google_plus': None, 'instagram': None}
 
-    def __init__(self, initiative):
-        try:
-            self.initiative = Initiative.objects.get(name=initiative)
-            enabled_channels = Channel.objects.filter(enabled=True)
-            for e_channel in enabled_channels:
-                if e_channel.name.lower() == "twitter":
-                    self.channels['twitter'] = Twitter(e_channel.consumer_key, e_channel.consumer_secret,
-                                                       e_channel.access_token, e_channel.access_token_secret,
-                                                       self.initiative)
-                else:
-                    logger.error("Requested channel %s seems to be unavailable" % e_channel)
-        except Initiative.DoesNotExist as e:
-            logger.critical("Unknown initiative: %s. The meta-channel cannot be started" % e)
-
-    def authenticate(self, channel=None):
-        if channel is None:
-            for channel_name in self.channels.iterkeys():
-                self._do_authenticate(channel_name)
+    @classmethod
+    def authenticate(cls, channel, initiative_name):
+        channel_name = channel.name.lower()
+        initiative = Initiative.objects.get(name=initiative_name)
+        if channel_name == "twitter":
+            cls.channels[channel_name] = Twitter(channel.consumer_key, channel.consumer_secret, channel.access_token,
+                                                 channel.access_token_secret, initiative)
         else:
-            self._do_authenticate(channel)
+            logger.error("Unknown channel: %s" % channel_name)
+            return
+        cls.channels[channel_name].authenticate()
 
-    def _do_authenticate(self, channel_name):
-        if self.channels[channel_name]:
-            self.channels[channel_name].authenticate()
-        else:
-            logger.error("The channel %s is unavailable, cannot authenticate on it" % channel_name)
+    @classmethod
+    def broadcast(cls, message):
+        for name in cls.channels.iterkeys():
+            if cls.channels[name]:
+                cls.channels[name].post_public(message)
 
-    def broadcast(self, message):
-        for name in self.channels.iterkeys():
-            if self.channels[name]:
-                self.channels[name].post_public(message)
-
-    def post_public(self, channels, message):
+    @classmethod
+    def post_public(cls, channels, message):
         for channel in channels:
-            if self.channels[channel]:
-                self.channels[channel].post_public(message)
+            channel = channel.lower()
+            if cls.channels[channel]:
+                cls.channels[channel].post_public(message)
             else:
                 logger.error("The channel %s is unavailable, cannot post into it" % channel)
 
-    def send_direct_message(self, channel_name, recipient, message):
-        if self.channels[channel_name]:
-            self.channels[channel_name].send_direct_message(recipient, message)
+    @classmethod
+    def send_direct_message(cls, channel_name, recipient, message):
+        channel_name = channel_name.lower()
+        if cls.channels[channel_name]:
+            cls.channels[channel_name].send_direct_message(recipient, message)
         else:
             logger.error("The channel %s is unavailable, cannot send direct message through it" % channel_name)
 
-    def reply_to(self, channel_name, id_message, new_message):
-        if self.channels[channel_name]:
-            self.channels[channel_name].reply_to(id_message, new_message)
+    @classmethod
+    def reply_to(cls, channel_name, id_message, new_message):
+        channel_name = channel_name.lower()
+        if cls.channels[channel_name]:
+            cls.channels[channel_name].reply_to(id_message, new_message)
         else:
             logger.error("The channel %s is unavailable, cannot post to a user through it" % channel_name)
 
-    def get_post(self, channel_name, id_post):
-        if self.channels[channel_name]:
-            self.channels[channel_name].get_post(id_post)
+    @classmethod
+    def get_post(cls, channel_name, id_post):
+        channel_name = channel_name.lower()
+        if cls.channels[channel_name]:
+            cls.channels[channel_name].get_post(id_post)
         else:
             logger.error("The channel %s is unavailable, cannot get a post" % channel_name)
 
-    def get_info_user(self, channel_name, id_user):
-        if self.channels[channel_name]:
-            self.channels[channel_name].get_info_user(id_user)
+    @classmethod
+    def get_info_user(cls, channel_name, id_user):
+        channel_name = channel_name.lower()
+        if cls.channels[channel_name]:
+            cls.channels[channel_name].get_info_user(id_user)
         else:
             logger.error("The channel %s is unavailable, cannot get info about a user" % channel_name)
 
-    def listen(self, channel=None, followings=None):
-        if channel is None:
-            for channel_name in self.channels.iterkeys():
-                self._do_listen(channel_name, followings)
+    @classmethod
+    def listen(cls, channel_name, followings):
+        channel_name = channel_name.lower()
+        if cls.channels[channel_name.lower()]:
+            cls.channels[channel_name].listen(followings)
         else:
-            self._do_listen(channel, followings)
+            logger.error("The channel %s is unavailable, cannot be listened" % channel_name)
 
-    def _do_listen(self, channel_name, followings):
-        if self.channels[channel_name]:
-            self.channels[channel_name].listen(followings)
-        else:
-            logger.error("The channel %s is unavailable, cannot listen it" % channel_name)
-
-    def disconnect(self, channel=None):
-        if channel is None:
-            for channel_name in self.channels.iterkeys():
-                self._do_disconnect(channel_name)
-        else:
-            self._do_disconnect(channel)
-
-    def _do_disconnect(self, channel_name):
-        if self.channels[channel_name]:
-            self.channels[channel_name].disconnect()
+    @classmethod
+    def disconnect(cls, channel_name):
+        channel_name = channel_name.lower()
+        if cls.channels[channel_name]:
+            cls.channels[channel_name].disconnect()
         else:
             logger.error("The channel %s is unavailable, cannot disconnect it" % channel_name)
 
@@ -397,7 +391,7 @@ class PostManager():
             except AppPost.DoesNotExist:
                 return  # I'm not interested in processing replies that were not posted to the app posts
 
-        if within_initiative:
+        if within_initiative and challenge:
             if author is None:
                 author = self.channel.register_new_author(post)
             logger.info("Post from %s within the initiative: %s, campaign: %s, challenge: %s" %
@@ -865,7 +859,6 @@ class Twitter(SocialNetwork):
     channel = None
     initiative = None
     stream = None
-    name = "Twitter"
 
     def __init__(self, consumer_key, consumer_secret, access_token, access_token_secret, initiative):
         self.channel = Channel.objects.get(name="twitter")
@@ -892,7 +885,8 @@ class Twitter(SocialNetwork):
         listener = TwitterListener(manager)
         self.stream = tweepy.Stream(self.auth_handler, listener)
         self.stream.filter(follow=followings, track=hashtags, async=True)
-        logger.info("Starting to listen the Twitter Stream")
+        self.channel.on()
+        logger.info("Starting to listen Twitter Stream")
 
     def post_public(self, message):
         try:
@@ -974,7 +968,7 @@ class Twitter(SocialNetwork):
     def has_initiative_hashtags(self, post):
         initiative_hashtag = self.initiative.hashtag
         for post_hashtag in post.entities['hashtags']:
-            if post_hashtag['text'] == initiative_hashtag:
+            if post_hashtag['text'].lower().strip() == initiative_hashtag.lower().strip():
                 return True
         return False
 
@@ -985,13 +979,15 @@ class Twitter(SocialNetwork):
             for challenge in challenges:
                 challenge_hashtag = challenge.hashtag
                 for post_hashtag in post.entities['hashtags']:
-                    if post_hashtag['text'] == challenge_hashtag:
+                    if post_hashtag['text'].lower().strip() == challenge_hashtag.lower().strip():
                         return challenge
         return None
 
     def disconnect(self):
         if self.stream is not None:
             self.stream.disconnect()
+            self.channel.off()
+            logger.info("Twitter channel has been disconnected...")
         else:
             logger.debug("Twitter channel is already disconnected")
 
@@ -1002,7 +998,7 @@ class Twitter(SocialNetwork):
         return self.channel
 
     def get_name(self):
-        return self.name
+        return self.channel.name
 
 
 class TwitterListener(tweepy.StreamListener):

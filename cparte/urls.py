@@ -7,7 +7,7 @@ urlpatterns = patterns('',
     # ex: /cparte/posts/
     url(r'^posts/$', views.posts, name='posts'),
     # ex: /cparte/listen/twitter or /cparte/listen/all
-    url(r'^listen/(?P<channel>[a-z]+)$', views.listen, name='listen'),
+    url(r'^listen/(?P<channel_name>[A-Za-z]+)$', views.listen, name='listen'),
     # ex: /cparte/hangup/twitter or /cparte/hangup/all
-    url(r'^hangup/(?P<channel>[a-z]+)$', views.hangup, name='hangup'),
+    url(r'^hangup/(?P<channel_name>[A-Za-z]+)$', views.hangup, name='hangup'),
 )

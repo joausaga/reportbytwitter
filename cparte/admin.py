@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.utils import timezone
-from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter
+from django.utils.formats import localize
+from django.utils.html import format_html
+from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter, \
+                          ContributionPost, MetaChannel
 
 import logging
 
@@ -76,7 +79,11 @@ class AppPostAdmin(admin.ModelAdmin):
     fieldsets = [
         (None,        {'fields': ['text', 'initiative', 'campaign', 'challenge', 'channel', 'category']})
     ]
-    list_display = ('datetime', 'text', 'channel', 'url', 'initiative', 'campaign', 'challenge', 'category')
+    list_display = ('datetime', 'text', 'channel', 'url', 'initiative', 'campaign', 'challenge')
+
+    def queryset(self, request):
+        qs = super(AppPostAdmin, self).queryset(request)
+        return qs.filter(category="EN")
 
     def save_model(self, request, obj, form, change):
         ch = Channel.objects.get(name=obj.channel.name)
@@ -107,10 +114,72 @@ class AppPostAdmin(admin.ModelAdmin):
             raise Exception("The social network object couldn't be created")
 
 
+class ContributionPostAdmin(admin.ModelAdmin):
+    list_display = ('datetime', 'author', 'zipcode', 'contribution', 'full_text', 'initiative', 'campaign', 'challenge', 'channel',
+                    'view')
+    list_display_links = ('contribution',)
+
+    def view(self, obj):
+        return format_html("<a href=\"" + obj.url + "\" target=\"_blank\">Link</a>")
+
+    def zipcode(self, obj):
+        return obj.author.zipcode
+
+    def has_add_permission(self, request):
+        return False
+
+
+class ChannelAdmin(admin.ModelAdmin):
+    list_display = ('name', 'enabled', 'app_account_id', 'status', 'buttons')
+    #actions = ['turn_on', 'turn_off']
+
+    def turn_on(self, request, queryset):
+        channel_counter = 0
+        for obj in queryset:
+            channel_counter += 1
+            app_account_id = Channel.objects.get(name=obj.name).app_account_id
+            MetaChannel.authenticate(channel=obj, initiative_name="California Report Card")
+            MetaChannel.listen(channel_name=obj.name, followings=[app_account_id])
+        if channel_counter > 1:
+            self.message_user(request, "%s channels were successfully turned on" % channel_counter)
+        else:
+            self.message_user(request, "%s channel was successfully turned on" % channel_counter)
+    turn_on.short_description = "Turn On"
+
+    def turn_off(self, request, queryset):
+        channel_counter = 0
+        for obj in queryset:
+            if obj.status:
+                channel_counter += 1
+                MetaChannel.disconnect(obj.name)
+        if channel_counter == 0:
+            if len(queryset) > 1:
+                self.message_user(request, "The channels are already off")
+            else:
+                self.message_user(request, "The channel is already off")
+        elif channel_counter == 1:
+            self.message_user(request, "%s channel was successfully turned off" % channel_counter)
+        else:
+            self.message_user(request, "%s channels were successfully turned off" % channel_counter)
+    turn_off.short_description = "Turn Off"
+
+    def buttons(self, obj):
+        if obj.status:
+            return """<a href="/cparte/listen/{0}" class="btn btn-success btn-xs disabled">On</a> |
+                      <a href="/cparte/hangup/{0}" class="btn btn-danger btn-xs">Off</a>""" \
+                      .format(obj.name)
+        else:
+            return """<a href="/cparte/listen/{0}" class="btn btn-success btn-xs">On</a> |
+                      <a href="/cparte/hangup/{0}" class="btn btn-danger btn-xs disabled">Off</a>""" \
+                      .format(obj.name)
+    buttons.short_description = 'Actions'
+    buttons.allow_tags = True
+
 admin.site.register(Initiative, InitiativeAdmin)
 admin.site.register(Campaign, CampaignAdmin)
-admin.site.register(Channel)
+admin.site.register(Channel, ChannelAdmin)
 admin.site.register(Message, MessageInfoAdmin)
 admin.site.register(ExtraInfo, ExtraInfoAdmin)
 admin.site.register(Setting, SettingAdmin)
 admin.site.register(AppPost, AppPostAdmin)
+admin.site.register(ContributionPost, ContributionPostAdmin)

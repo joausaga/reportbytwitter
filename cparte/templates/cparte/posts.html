@@ -1,9 +1,22 @@
-{% if latest_campaigns %}
+{# Load the tag library #}
+{% load bootstrap3 %}
+
+{# Load CSS and JavaScript #}
+{% bootstrap_css %}
+{% bootstrap_javascript %}
+
+{# Display django.contrib.messages as Bootstrap alerts #}
+{% bootstrap_messages %}
+
+
+{# Display a form #}
+
+{% if posts %}
     <ul>
-    {% for campaign in latest_campaigns %}
-        <li><a href="/campaigns/{{ campaign.id }}/">{{ campaign.name }}</a></li>
+    {% for post in posts %}
+        <li><a href="/posts/{{ post.id }}/">{{ post.author.name }}</a></li>
     {% endfor %}
     </ul>
 {% else %}
-    <p>No campaigns are available.</p>
+    <p>No posts already.</p>
 {% endif %}
