@@ -759,13 +759,13 @@ class PostManager():
         post_id = self.channel.get_id_post(post)
         if parent_post_id is not None:
             app_parent_post = AppPost.objects.get(id_in_channel=parent_post_id)
-            try:
-                contribution_parent_post = ContributionPost.objects.get(id_in_channel=post_id)
-            except ContributionPost.DoesNotExist:
-                contribution_parent_post = None
+
         else:
             app_parent_post = None
+        try:
             contribution_parent_post = ContributionPost.objects.get(id_in_channel=post_id)
+        except ContributionPost.DoesNotExist:
+            contribution_parent_post = None
         app_post = AppPost(id_in_channel=self.channel.get_id_post(response), datetime=timezone.now(),
                            text=response.text, url=self.channel.build_url_post(response),
                            app_parent_post=app_parent_post, initiative=initiative, campaign=challenge.campaign,
