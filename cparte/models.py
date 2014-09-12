@@ -516,8 +516,20 @@ class PostManager():
         author = self.channel.get_author(post)
         campaign = app_parent_post.campaign
         challenge = app_parent_post.challenge
-        contributions = ContributionPost.objects.filter(challenge=challenge, author=author.id)
-        if len(contributions) == 2:
+        contributions = ContributionPost.objects.filter(challenge=challenge, author=author.id).order_by('-datetime')
+        if len(contributions) < 2:
+            logger.critical("The number of contributions (%s) of the author %s is lower than the required number (2)."
+                            % (len(contributions), author.name))
+        else:
+            if len(contributions) > 2:
+                # If there are more than two contributions from where update to the app is in an inconsistent state.
+                # As way of auto-recovering from this state the newest contributions will be deleted, leaving only the
+                # two oldest ones in the database
+                for contribution in contributions[:]:
+                    contribution.delete()
+                    contributions.remove(contribution)
+                    if len(contributions) == 2:
+                        break
             old_post = contributions[0] if not contributions[0].temporal else contributions[1]
             new_post = contributions[0] if contributions[0].temporal else contributions[1]
             new_post.preserve()  # Preserve the newest
@@ -526,11 +538,6 @@ class PostManager():
                              extra=new_post)
             old_post.delete()  # Delete the oldest
             author.reset_mistake_flags()
-        else:
-            logger.critical("The number of contributions (%s) of the author %s does not satisfy the challenge's "
-                            "required number (2). Until fixing the problem the contribution of this author will not be"
-                            "updated" % (len(contributions), author.name))
-            #TODO: Delete the newest
 
     def _get_extra_info(self, text, campaign):
         reg_expr = re.compile(campaign.extrainfo.format_answer)
@@ -555,25 +562,32 @@ class PostManager():
                 if len(existing_posts) > 0:
                     if challenge.answers_from_same_author == 1:
                         # Allow changes only if the number of allowed answers is 1
-                        if len(existing_posts) == 1:
-                            # In theory (?) it should exist only one
-                            existing_post = existing_posts[0]
-                            if curated_input != existing_post.contribution:
-                                # Only if the new contribution is different from the previous we will process it
-                                # otherwise it will be ignored
-                                self._save_post(post, curated_input, parent_post_id, challenge, temporal=True)
-                                logger.info("A new contribution to the challenge %s was posted by the participant %s. "
-                                            "It was saved temporarily" % (challenge.name,
-                                                                          self.channel.get_author(post).name))
-                                message = campaign.messages.get(category="ask_change_contribution")
-                                self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge,
-                                                 message=message, extra=(curated_input, existing_post))
-                            else:
-                                logger.info("The new contribution: %s is equal as the already existing" % curated_input)
-                        else:
+                        if len(existing_posts) > 1:
+                            # In theory it should exist only one contribution, but if not and as way of auto-recovering
+                            # from an inconsistent state the newest ones will be deleted, leaving only the oldest one in
+                            # the database
                             logger.critical("The challenge %s allows only one contribution per participant but the %s "
-                                            "has more than one contribution saved in the db. Please delete one of them"
-                                            % (challenge.name, self.channel.get_author(post).name))
+                                            "has more than one contribution saved in the db. The newest ones will be "
+                                            "deleted" % (challenge.name, self.channel.get_author(post).name))
+                            for e_post in existing_posts[:]:
+                                e_post.delete()
+                                existing_posts.remove(e_post)
+                                if len(existing_posts) == 1:
+                                    break
+                        existing_post = existing_posts[0]
+                        if curated_input != existing_post.contribution:
+                            # Only if the new contribution is different from the previous we will process it
+                            # otherwise it will be ignored
+                            self._save_post(post, curated_input, parent_post_id, challenge, temporal=True)
+                            logger.info("A new contribution to the challenge %s was posted by the participant %s. "
+                                        "It was saved temporarily" % (challenge.name,
+                                                                      self.channel.get_author(post).name))
+                            message = campaign.messages.get(category="ask_change_contribution")
+                            self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge,
+                                             message=message, extra=(curated_input, existing_post))
+                        else:
+                            logger.info("The new contribution: %s is equal as the already existing" % curated_input)
+
                     else:
                         if len(existing_posts) <= challenge.answers_from_same_author:
                             # Save participant's answer if the participant is still under the limit of allowed answers
@@ -649,7 +663,7 @@ class PostManager():
     def _has_already_posted(self, post, challenge):
         author = self.channel.get_author(post)
         try:
-            return ContributionPost.objects.filter(challenge=challenge, author=author.id)
+            return ContributionPost.objects.filter(challenge=challenge, author=author.id).order_by('-datetime')
         except ContributionPost.DoesNotExist:
             return None
 
