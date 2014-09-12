@@ -43,15 +43,19 @@ class InitiativeAdmin(admin.ModelAdmin):
 
 
 class SettingAdmin(admin.ModelAdmin):
-    list_display = ('name', 'description', 'value')
+    list_display = ('id','name', 'description', 'value')
+    ordering = ('id',)
 
 
 class ExtraInfoAdmin(admin.ModelAdmin):
-    list_display = ('name', 'description', 'style_answer', 'format_answer')
+    list_display = ('id','name', 'description', 'style_answer', 'format_answer')
+    ordering = ('id',)
 
 
 class MessageInfoAdmin(admin.ModelAdmin):
-    list_display = ('name', 'body', 'key_terms', 'category', 'answer_terms', 'campaign', 'initiative')
+    list_display = ('id','name', 'body', 'key_terms', 'category', 'answer_terms', 'campaign', 'initiative')
+    ordering = ('id',)
+    list_filter = ['language']
 
     def campaign(self, obj):
         campaigns = obj.campaign_set.all()
@@ -69,6 +73,15 @@ class MessageInfoAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         if obj.channel.max_length_msgs is None or len(obj.body) <= obj.channel.max_length_msgs:
+            msg = obj.body.split()
+            key_terms = obj.key_terms.split()
+            for term in key_terms:
+                found = False
+                for word in msg:
+                    if term.lower() == word.lower():
+                        found = True
+                if not found:
+                    raise Exception("The key term: %s is not included in the message" % term)
             obj.save()
         else:
             raise Exception("The limit of the message body cannot exceed the channel's length for messages %s" %
@@ -79,7 +92,8 @@ class AppPostAdmin(admin.ModelAdmin):
     fieldsets = [
         (None,        {'fields': ['text', 'initiative', 'campaign', 'challenge', 'channel', 'category']})
     ]
-    list_display = ('datetime', 'text', 'channel', 'url', 'initiative', 'campaign', 'challenge')
+    list_display = ('id','datetime', 'text', 'channel', 'url', 'initiative', 'campaign', 'challenge')
+    ordering = ('datetime',)
 
     def queryset(self, request):
         qs = super(AppPostAdmin, self).queryset(request)
@@ -117,6 +131,7 @@ class ContributionPostAdmin(admin.ModelAdmin):
     list_display = ('datetime', 'author', 'zipcode', 'contribution', 'full_text', 'initiative', 'campaign', 'challenge', 'channel',
                     'view')
     list_display_links = ('contribution',)
+    ordering = ('datetime',)
 
     def view(self, obj):
         return format_html("<a href=\"" + obj.url + "\" target=\"_blank\">Link</a>")
@@ -129,7 +144,8 @@ class ContributionPostAdmin(admin.ModelAdmin):
 
 
 class ChannelAdmin(admin.ModelAdmin):
-    list_display = ('name', 'enabled', 'app_account_id', 'status', 'row_actions')
+    list_display = ('id','name', 'enabled', 'app_account_id', 'status', 'row_actions')
+    ordering = ('id',)
 
     def row_actions(self, obj):
         if obj.status:
@@ -145,7 +161,9 @@ class ChannelAdmin(admin.ModelAdmin):
 
 
 class AccountAdmin(admin.ModelAdmin):
-    list_display = ('owner','id_in_channel','handler','url','channel')
+    list_display = ('id','owner','id_in_channel','handler','url','channel')
+    ordering = ('id',)
+
 
 class ChallengeAdmin(admin.ModelAdmin):
     list_display = ('id','name','initiative','campaign','hashtag','style_answer','format_answer','max_length_answer')
