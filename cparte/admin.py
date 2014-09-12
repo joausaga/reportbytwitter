@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.utils.formats import localize
 from django.utils.html import format_html
 from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter, \
-                          ContributionPost, MetaChannel
+                          ContributionPost, Account
 
 import logging
 
@@ -18,7 +18,8 @@ class ChallengeInline(admin.StackedInline):
 
 class CampaignAdmin(admin.ModelAdmin):
     inlines = [ChallengeInline]
-    list_display = ('name', 'initiative', 'hashtag', 'list_challenges')
+    list_display = ('id','name', 'initiative', 'list_challenges')
+    ordering = ('id',)
     filter_horizontal = ('messages',)
 
     def list_challenges(self, obj):
@@ -33,13 +34,12 @@ class CampaignAdmin(admin.ModelAdmin):
                 str_challenges += challenge.name.encode('utf-8')
             count_challenge += 1
         return str_challenges
+    list_challenges.short_description = 'Challenges'
 
 
 class InitiativeAdmin(admin.ModelAdmin):
-    fieldsets = [
-        (None,        {'fields': ['name', 'organizer', 'hashtag', 'url']})
-    ]
-    list_display = ('name', 'organizer', 'hashtag', 'url')
+    list_display = ('id', 'name', 'organizer', 'hashtag', 'account', 'url', 'language')
+    ordering = ('id',)
 
 
 class SettingAdmin(admin.ModelAdmin):
@@ -88,8 +88,7 @@ class AppPostAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         ch = Channel.objects.get(name=obj.channel.name)
         if obj.channel.name == "Twitter":
-            social_network = Twitter(ch.consumer_key, ch.consumer_secret, ch.access_token, ch.access_token_secret,
-                                     obj.initiative)
+            social_network = Twitter(ch.consumer_key, ch.consumer_secret, ch.access_token, ch.access_token_secret)
         else:
             raise Exception("Unknown channel named %s" % obj.channel.name)
 
@@ -130,40 +129,9 @@ class ContributionPostAdmin(admin.ModelAdmin):
 
 
 class ChannelAdmin(admin.ModelAdmin):
-    list_display = ('name', 'enabled', 'app_account_id', 'status', 'buttons')
-    #actions = ['turn_on', 'turn_off']
+    list_display = ('name', 'enabled', 'app_account_id', 'status', 'row_actions')
 
-    def turn_on(self, request, queryset):
-        channel_counter = 0
-        for obj in queryset:
-            channel_counter += 1
-            app_account_id = Channel.objects.get(name=obj.name).app_account_id
-            MetaChannel.authenticate(channel=obj, initiative_name="California Report Card")
-            MetaChannel.listen(channel_name=obj.name, followings=[app_account_id])
-        if channel_counter > 1:
-            self.message_user(request, "%s channels were successfully turned on" % channel_counter)
-        else:
-            self.message_user(request, "%s channel was successfully turned on" % channel_counter)
-    turn_on.short_description = "Turn On"
-
-    def turn_off(self, request, queryset):
-        channel_counter = 0
-        for obj in queryset:
-            if obj.status:
-                channel_counter += 1
-                MetaChannel.disconnect(obj.name)
-        if channel_counter == 0:
-            if len(queryset) > 1:
-                self.message_user(request, "The channels are already off")
-            else:
-                self.message_user(request, "The channel is already off")
-        elif channel_counter == 1:
-            self.message_user(request, "%s channel was successfully turned off" % channel_counter)
-        else:
-            self.message_user(request, "%s channels were successfully turned off" % channel_counter)
-    turn_off.short_description = "Turn Off"
-
-    def buttons(self, obj):
+    def row_actions(self, obj):
         if obj.status:
             return """<a href="/cparte/listen/{0}" class="btn btn-success btn-xs disabled">On</a> |
                       <a href="/cparte/hangup/{0}" class="btn btn-danger btn-xs">Off</a>""" \
@@ -172,8 +140,20 @@ class ChannelAdmin(admin.ModelAdmin):
             return """<a href="/cparte/listen/{0}" class="btn btn-success btn-xs">On</a> |
                       <a href="/cparte/hangup/{0}" class="btn btn-danger btn-xs disabled">Off</a>""" \
                       .format(obj.name)
-    buttons.short_description = 'Actions'
-    buttons.allow_tags = True
+    row_actions.short_description = 'Actions'
+    row_actions.allow_tags = True
+
+
+class AccountAdmin(admin.ModelAdmin):
+    list_display = ('owner','id_in_channel','handler','url','channel')
+
+class ChallengeAdmin(admin.ModelAdmin):
+    list_display = ('id','name','initiative','campaign','hashtag','style_answer','format_answer','max_length_answer')
+    ordering = ('id',)
+
+    def initiative(self, obj):
+        return obj.campaign.initiative.name
+
 
 admin.site.register(Initiative, InitiativeAdmin)
 admin.site.register(Campaign, CampaignAdmin)
@@ -183,3 +163,5 @@ admin.site.register(ExtraInfo, ExtraInfoAdmin)
 admin.site.register(Setting, SettingAdmin)
 admin.site.register(AppPost, AppPostAdmin)
 admin.site.register(ContributionPost, ContributionPostAdmin)
+admin.site.register(Account, AccountAdmin)
+admin.site.register(Challenge, ChallengeAdmin)

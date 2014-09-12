@@ -23,9 +23,10 @@ def posts(request):
 
 
 def listen(request, channel_name):
-    channel = Channel.objects.get(name=channel_name)
-    MetaChannel.authenticate(channel=channel, initiative_name="California Report Card")
-    MetaChannel.listen(channel_name=channel_name, followings=[channel.app_account_id])
+    initiatives = [1,2]   # Add here the ids of the initiatives
+    accounts = [1]  # Add here the ids of the accounts
+    MetaChannel.authenticate(channel_name=channel_name)
+    MetaChannel.listen(channel_name=channel_name, followings=accounts, initiatives=initiatives)
     return HttpResponseRedirect("/admin/cparte/channel/")
 
 

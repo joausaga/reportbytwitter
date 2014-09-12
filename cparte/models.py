@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 """ Data Models
 """
 
+LANGUAGES = (
+    ('en', 'English'),
+    ('es', 'Spanish'),
+    ('it', 'Italian')
+)
+
 
 class Channel(models.Model):
     name = models.CharField(max_length=50)
@@ -41,6 +47,17 @@ class Channel(models.Model):
         self.save()
 
 
+class Account(models.Model):
+    owner = models.CharField(max_length=50)
+    id_in_channel = models.CharField(max_length=50)
+    handler = models.CharField(max_length=50)
+    url = models.URLField()
+    channel = models.ForeignKey(Channel)
+
+    def __unicode__(self):
+        return self.owner
+
+
 class Message(models.Model):
     name = models.CharField(max_length=50)
     body = models.TextField()
@@ -60,6 +77,7 @@ class Message(models.Model):
     )
     category = models.CharField(max_length=100, choices=CATEGORIES)
     answer_terms = models.CharField(max_length=10, null=True, blank=True, help_text="Max length 10 characters")
+    language = models.CharField(max_length=3, choices=LANGUAGES)
     channel = models.ForeignKey(Channel)
 
     def __unicode__(self):
@@ -160,17 +178,19 @@ class Author(models.Model):
 
 
 class Initiative(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=100)
     organizer = models.CharField(max_length=50)
-    hashtag = models.CharField(max_length=14, help_text="Max length 14 characters (do not include '#')")
+    account = models.ForeignKey(Account)
+    hashtag = models.CharField(unique=True, max_length=14, help_text="Max length 14 characters (do not include '#')")
     url = models.URLField(null=True, blank=True)
+    language = models.CharField(max_length=3, choices=LANGUAGES)
 
     def __unicode__(self):
         return self.name
 
 
 class Campaign(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=100)
     initiative = models.ForeignKey(Initiative)
     hashtag = models.CharField(max_length=14, null=True, blank=True,
                                help_text="Max length 14 characters (do not include '#')")
@@ -183,7 +203,7 @@ class Campaign(models.Model):
 
 
 class Challenge(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=100)
     campaign = models.ForeignKey(Campaign)
     hashtag = models.CharField(max_length=14, help_text="Max length 14 characters (do not include '#')")
     STYLE_ANSWER = (
@@ -260,12 +280,10 @@ class MetaChannel():
     channels = {'twitter': None, 'facebook': None, 'google_plus': None, 'instagram': None}
 
     @classmethod
-    def authenticate(cls, channel, initiative_name):
-        channel_name = channel.name.lower()
-        initiative = Initiative.objects.get(name=initiative_name)
+    def authenticate(cls, channel_name):
+        channel_name = channel_name.lower()
         if channel_name == "twitter":
-            cls.channels[channel_name] = Twitter(channel.consumer_key, channel.consumer_secret, channel.access_token,
-                                                 channel.access_token_secret, initiative)
+            cls.channels[channel_name] = Twitter()
         else:
             logger.error("Unknown channel: %s" % channel_name)
             return
@@ -284,7 +302,7 @@ class MetaChannel():
             if cls.channels[channel]:
                 cls.channels[channel].post_public(message)
             else:
-                logger.error("The channel %s is unavailable, cannot post into it" % channel)
+                logger.error("%s channel is unavailable, it cannot post into it" % channel)
 
     @classmethod
     def send_direct_message(cls, channel_name, recipient, message):
@@ -292,7 +310,7 @@ class MetaChannel():
         if cls.channels[channel_name]:
             cls.channels[channel_name].send_direct_message(recipient, message)
         else:
-            logger.error("The channel %s is unavailable, cannot send direct message through it" % channel_name)
+            logger.error("%s channel is unavailable, it cannot send direct message through it" % channel_name)
 
     @classmethod
     def reply_to(cls, channel_name, id_message, new_message):
@@ -300,7 +318,7 @@ class MetaChannel():
         if cls.channels[channel_name]:
             cls.channels[channel_name].reply_to(id_message, new_message)
         else:
-            logger.error("The channel %s is unavailable, cannot post to a user through it" % channel_name)
+            logger.error("%s channel is unavailable, it cannot post to a user through it" % channel_name)
 
     @classmethod
     def get_post(cls, channel_name, id_post):
@@ -308,7 +326,7 @@ class MetaChannel():
         if cls.channels[channel_name]:
             cls.channels[channel_name].get_post(id_post)
         else:
-            logger.error("The channel %s is unavailable, cannot get a post" % channel_name)
+            logger.error("%s channel is unavailable, it cannot get a post" % channel_name)
 
     @classmethod
     def get_info_user(cls, channel_name, id_user):
@@ -316,15 +334,15 @@ class MetaChannel():
         if cls.channels[channel_name]:
             cls.channels[channel_name].get_info_user(id_user)
         else:
-            logger.error("The channel %s is unavailable, cannot get info about a user" % channel_name)
+            logger.error("%s channel is unavailable, it cannot get info about a user" % channel_name)
 
     @classmethod
-    def listen(cls, channel_name, followings):
+    def listen(cls, channel_name, followings, initiatives):
         channel_name = channel_name.lower()
         if cls.channels[channel_name.lower()]:
-            cls.channels[channel_name].listen(followings)
+            cls.channels[channel_name].listen(followings, initiatives)
         else:
-            logger.error("The channel %s is unavailable, cannot be listened" % channel_name)
+            logger.error("%s channel is unavailable, it cannot be listened" % channel_name)
 
     @classmethod
     def disconnect(cls, channel_name):
@@ -332,7 +350,7 @@ class MetaChannel():
         if cls.channels[channel_name]:
             cls.channels[channel_name].disconnect()
         else:
-            logger.error("The channel %s is unavailable, cannot disconnect it" % channel_name)
+            logger.error("%s channel is unavailable, it cannot disconnect it" % channel_name)
 
 
 class PostManager():
@@ -377,8 +395,9 @@ class PostManager():
             if self.channel.get_author_id(post) == self.channel.get_app_account_id():
                 return  # So far, I'm not interested in processing my own posts
             else:
-                within_initiative = self.channel.has_initiative_hashtags(post)
-                challenge = self.channel.get_challenge_info(post) if within_initiative else None
+                initiative = self.channel.has_initiative_hashtags(post)
+                within_initiative = True if initiative else False
+                challenge = self.channel.get_challenge_info(post, initiative) if within_initiative else None
         else:
             try:
                 # Searching for the post in the app db
@@ -511,6 +530,7 @@ class PostManager():
             logger.critical("The number of contributions (%s) of the author %s does not satisfy the challenge's "
                             "required number (2). Until fixing the problem the contribution of this author will not be"
                             "updated" % (len(contributions), author.name))
+            #TODO: Delete the newest
 
     def _get_extra_info(self, text, campaign):
         reg_expr = re.compile(campaign.extrainfo.format_answer)
@@ -636,12 +656,13 @@ class PostManager():
     def _save_post(self, post, curated_input, parent_post_id, challenge, temporal):
         post_curated_info = self.channel.get_info_post(post)
         campaign = challenge.campaign
+        initiative = campaign.initiative
         post_to_save = ContributionPost(id_in_channel=post_curated_info['id'],
                                         datetime=timezone.make_aware(post_curated_info['datetime'],
                                                                      timezone.get_default_timezone()),
                                         contribution=curated_input, full_text=post_curated_info['text'],
                                         url=post_curated_info['url'], author=post_curated_info['author'],
-                                        in_reply_to=parent_post_id, initiative=post_curated_info['initiative'],
+                                        in_reply_to=parent_post_id, initiative=initiative,
                                         campaign=campaign, challenge=challenge, channel=post_curated_info['channel'],
                                         votes=post_curated_info['votes'], re_posts=post_curated_info['re_posts'],
                                         bookmarks=post_curated_info['bookmarks'], temporal=temporal)
@@ -751,14 +772,51 @@ class PostManager():
 
 class SocialNetwork():
     __metaclass__  = abc.ABCMeta
+    initiatives = None
 
     @abc.abstractmethod
     def authenticate(self):
         """Authenticate into the channel"""
 
     @abc.abstractmethod
-    def listen(self, users):
+    def listen(self, users, initiatives):
         """Listen the channel"""
+
+    def build_hashtag_array(self, initiative_ids):
+        hashtags = []
+        for id_initiative in initiative_ids:
+            try:
+                initiative = Initiative.objects.get(pk=id_initiative)
+            except Initiative.DoesNotExist:
+                e_msg = "Does not exist an initiative identified with the id %s" % id_initiative
+                logger.critical(e_msg)
+                raise Exception(e_msg)
+
+            if self.initiatives:
+                self.initiatives.append(initiative)
+                hashtags.append(initiative.hashtag)
+            else:
+                self.initiatives = [initiative]
+                hashtags = [initiative.hashtag]
+            # Add to the array of hashtags the hashtags of the initiative's campaigns
+            for campaign in initiative.campaign_set.all():
+                if campaign.hashtag is not None:
+                    hashtags.append(campaign.hashtag)
+                # Add to the array of hashtags the hashtags of the campaign's challenges
+                for challenge in campaign.challenge_set.all():
+                    hashtags.append(challenge.hashtag)
+        return hashtags
+
+    def build_account_array(self, account_ids):
+        accounts = []
+        for id_account in account_ids:
+            try:
+                accounts.append(Account.objects.get(pk=id_account).id_in_channel)
+            except Account.DoesNotExist:
+                e_msg = "Does not exist an account identified with the id %s" % id_account
+                logger.critical(e_msg)
+                raise Exception(e_msg)
+        return accounts
 
     @abc.abstractmethod
     def post_public(self, message):
@@ -829,7 +887,7 @@ class SocialNetwork():
         """Check whether the text of the post has the hashtags the identifies the initiative"""
 
     @abc.abstractmethod
-    def get_challenge_info(self, post):
+    def get_challenge_info(self, post, initiative):
         """Return information about the challenge"""
 
     @abc.abstractmethod
@@ -851,40 +909,25 @@ class SocialNetwork():
 
 class Twitter(SocialNetwork):
     auth_handler = None
-    consumer_key = None
-    consumer_secret = None
-    access_token = None
-    access_token_secret = None
     api = None
     channel = None
-    initiative = None
     stream = None
 
-    def __init__(self, consumer_key, consumer_secret, access_token, access_token_secret, initiative):
+    def __init__(self):
         self.channel = Channel.objects.get(name="twitter")
-        self.consumer_key = consumer_key
-        self.consumer_secret = consumer_secret
-        self.access_token = access_token
-        self.access_token_secret = access_token_secret
-        self.initiative = initiative
 
     def authenticate(self):
-        self.auth_handler = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
-        self.auth_handler.set_access_token(self.access_token, self.access_token_secret)
+        self.auth_handler = tweepy.OAuthHandler(self.channel.consumer_key, self.channel.consumer_secret)
+        self.auth_handler.set_access_token(self.channel.access_token, self.channel.access_token_secret)
         self.api = tweepy.API(self.auth_handler)
 
-    def listen(self, followings):
-        hashtags = [self.initiative.hashtag]
-        for campaign in self.initiative.campaign_set.all():
-            if campaign.hashtag is not None:
-                hashtags.append(campaign.hashtag)
-            for challenge in campaign.challenge_set.all():
-                hashtags.append(challenge.hashtag)
-
+    def listen(self, followings, initiatives):
+        hashtags = self.build_hashtag_array(initiatives)
+        accounts = self.build_account_array(followings)
         manager = PostManager(self)
         listener = TwitterListener(manager)
         self.stream = tweepy.Stream(self.auth_handler, listener)
-        self.stream.filter(follow=followings, track=hashtags, async=True)
+        self.stream.filter(follow=accounts, track=hashtags, async=True)
         self.channel.on()
         logger.info("Starting to listen Twitter Stream")
 
@@ -938,8 +981,8 @@ class Twitter(SocialNetwork):
 
     def get_info_post(self, post):
         return {'id': post.id_str, 'datetime': post.created_at, 'text': post.text, 'url': self.build_url_post(post),
-                'author': self.get_author(post), 'initiative': self.initiative, 'channel': self.channel, 'votes': 0,
-                're_posts': post.retweet_count, 'bookmarks': post.favorite_count}
+                'author': self.get_author(post), 'channel': self.channel, 'votes': 0, 're_posts': post.retweet_count,
+                'bookmarks': post.favorite_count}
 
     def build_url_post(self, post):
         return self.channel.url + post.author.screen_name + "/status/" + post.id_str
@@ -966,14 +1009,15 @@ class Twitter(SocialNetwork):
         return new_author
 
     def has_initiative_hashtags(self, post):
-        initiative_hashtag = self.initiative.hashtag
-        for post_hashtag in post.entities['hashtags']:
-            if post_hashtag['text'].lower().strip() == initiative_hashtag.lower().strip():
-                return True
-        return False
+        for initiative in self.initiatives:
+            initiative_hashtag = initiative.hashtag
+            for post_hashtag in post.entities['hashtags']:
+                if post_hashtag['text'].lower().strip() == initiative_hashtag.lower().strip():
+                    return initiative
+        return None
 
-    def get_challenge_info(self, post):
-        campaigns = self.initiative.campaign_set.all()
+    def get_challenge_info(self, post, initiative):
+        campaigns = initiative.campaign_set.all()
         for campaign in campaigns:
             challenges = campaign.challenge_set.all()
             for challenge in challenges:
