@@ -125,6 +125,7 @@ class ContributionPostAdmin(admin.ModelAdmin):
                     'view')
     list_display_links = ('contribution',)
     ordering = ('datetime',)
+    list_filter = ['initiative', 'campaign', 'challenge', 'channel']
 
     def view(self, obj):
         return format_html("<a href=\"" + obj.url + "\" target=\"_blank\">Link</a>")
