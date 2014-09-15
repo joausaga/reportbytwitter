@@ -31,3 +31,4 @@ Dependencies
 3. [Tweepy](http://www.tweepy.org) a python-based Twitter API client `pip install tweepy`
 4. [Django Admin Bootstrapped](https://riccardo.forina.me/bootstrap-your-django-admin-in-3-minutes) App `pip install django-admin-bootstrapped`
 5. [Django Bootstrap3](https://github.com/dyve/django-bootstrap3) App `pip install django-bootstrap3`
+6. [Google API Client](https://developers.google.com/api-client-library/python/) `pip install google-api-python-client`

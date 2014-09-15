@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.utils import timezone
 from django.utils.html import format_html
 from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter, \
                           ContributionPost, Account
