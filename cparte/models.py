@@ -1,12 +1,12 @@
 from django.db import models
 from django.utils import timezone
-
+from threading import Thread
 import tweepy
 import abc
 import re
 import time
 import logging
-
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +30,9 @@ class Channel(models.Model):
     access_token = models.CharField(max_length=100)
     access_token_secret = models.CharField(max_length=100)
     url = models.URLField(null=True)
-    app_account_id = models.CharField(max_length=50)
     max_length_msgs = models.IntegerField(null=True, blank=True, help_text="Maximum length of messages to send through"
-                                                                           "this channel from the application. Leave it "
-                                                                           "blank for unlimited lengths.")
+                                                                           "this channel from the application. Leave it"
+                                                                           " blank for unlimited lengths.")
 
     def __unicode__(self):
         return self.name
@@ -272,6 +271,19 @@ class AppPost(models.Model):
             return self.text
 
 
+class MsgQueue(models.Model):
+    timestamp = models.DateTimeField(auto_now=True)
+    message_text = models.TextField()
+    recipient_id = models.CharField(max_length=100, null=True)
+    TYPES = (('PU', 'Public'), ('RE', 'Reply'), ('DM', 'Direct Message'))
+    type = models.CharField(max_length=3, choices=TYPES)
+    channel = models.ForeignKey(Channel)
+    payload = models.TextField(null=True)
+
+    def __unicode__(self):
+        return self.message_text
+
+
 """ Domain Models
 """
 
@@ -392,8 +404,8 @@ class PostManager():
         app_parent_post = None
 
         if parent_post_id is None:
-            if self.channel.get_author_id(post) == self.channel.get_app_account_id():
-                return  # So far, I'm not interested in processing my own posts
+            if self.channel.get_author_id(post) in self.channel.get_account_ids():
+                return  # So far, I'm not interested in processing posts authored by the accounts bound to the app
             else:
                 initiative = self.channel.has_initiative_hashtags(post)
                 within_initiative = True if initiative else False
@@ -558,12 +570,12 @@ class PostManager():
         if curated_input is not None:
             # It is a valid input
             if challenge.answers_from_same_author != self.NO_LIMIT_ANSWERS:
-                existing_posts = self._has_already_posted(post, challenge)
+                existing_posts = list(self._has_already_posted(post, challenge))
                 if len(existing_posts) > 0:
                     if challenge.answers_from_same_author == 1:
                         # Allow changes only if the number of allowed answers is 1
                         if len(existing_posts) > 1:
-                            # In theory it should exist only one contribution, but if not and as way of auto-recovering
+                            # It should exist only one contribution, but if not and as way of auto-recovering
                             # from an inconsistent state the newest ones will be deleted, leaving only the oldest one in
                             # the database
                             logger.critical("The challenge %s allows only one contribution per participant but the %s "
@@ -712,6 +724,7 @@ class PostManager():
         author_username = self.channel.get_author_username(post)
         current_datetime = time.strftime(self.settings['datetime_format'])
         type_msg = ""
+        post_id = self.channel.get_id_post(post)
 
         if message.category == "thanks_contribution":
             msg = message.body % (author_username, challenge.hashtag, initiative.url)
@@ -747,46 +760,18 @@ class PostManager():
             msg = message.body % (author_username, current_datetime)
             type_msg = "NT"
         if msg is not None:
-            response = self.channel.reply_to(post, msg)
-            if response:
-                logger.info("Sent the post '%s' to %s through %s" % (msg, author_username, self.channel.get_name()))
-                self._save_app_post(post, response, initiative, challenge, type_msg)
-            else:
-                logger.error("The message '%s' couldn't be delivered to %s" % (msg, author_username))
-
-    def _save_app_post(self, post, response, initiative, challenge, type_msg):
-        parent_post_id = self.channel.get_parent_post_id(post)
-        post_id = self.channel.get_id_post(post)
-        if parent_post_id is not None:
-            app_parent_post = AppPost.objects.get(id_in_channel=parent_post_id)
-
-        else:
-            app_parent_post = None
-        try:
-            contribution_parent_post = ContributionPost.objects.get(id_in_channel=post_id)
-        except ContributionPost.DoesNotExist:
-            contribution_parent_post = None
-        app_post = AppPost(id_in_channel=self.channel.get_id_post(response), datetime=timezone.now(),
-                           text=response.text, url=self.channel.build_url_post(response),
-                           app_parent_post=app_parent_post, initiative=initiative, campaign=challenge.campaign,
-                           contribution_parent_post=contribution_parent_post, challenge=challenge,
-                           channel=self.channel.get_channel_obj(), votes=0, re_posts=0, bookmarks=0, delivered=True,
-                           category=type_msg)
-        app_post.save(force_insert=True)
-        if app_post.id is None:
-            if self.channel.delete_post(response) is not None:
-                logger.error("The app post couldn't be saved into the db, so its corresponding post was deleted from "
-                             "%s" % self.channel.get_name())
-            else:
-                logger.critical("The app post couldn't be saved into the db, but its corresponding post couldn't be "
-                                "delete from %s. The app may be in an inconsistent state" % self.channel.get_name())
-        else:
-            logger.info("The app post with the id: %s was created" % app_post.id)
+            payload = {'parent_post_id': self.channel.get_parent_post_id(post), 'type_msg': type_msg,
+                       'post_id': post_id, 'initiative_id': initiative.id, 'author': author_username,
+                       'campaign_id': challenge.campaign.id, 'challenge_id': challenge.id}
+            payload_json = json.dumps(payload)
+            self.channel.send_message(message=msg, type_msg="RE", recipient_id=post_id, payload=payload_json)
 
 
 class SocialNetwork():
     __metaclass__  = abc.ABCMeta
     initiatives = None
+    msg_duplicate_code = 187
+    msg_dispatcher_active = False
 
     @abc.abstractmethod
     def authenticate(self):
@@ -833,15 +818,15 @@ class SocialNetwork():
         return accounts
 
     @abc.abstractmethod
-    def post_public(self, message):
+    def _post_public(self, message, payload):
         """Post a public messages into the channel"""
 
     @abc.abstractmethod
-    def send_direct_message(self, id_user, message):
+    def _send_direct_message(self, id_user, message, payload):
         """Send a private message to a particular user"""
 
     @abc.abstractmethod
-    def reply_to(self, post, message):
+    def _reply_to(self, post, message, payload):
         """Reply to an existing post"""
 
     @abc.abstractmethod
@@ -909,8 +894,8 @@ class SocialNetwork():
         """Disconnect the established connection"""
 
     @abc.abstractmethod
-    def get_app_account_id(self):
-        """Return the id of the account bound to the application"""
+    def get_account_ids(self):
+        """Return the ids of the accounts that are bound to the application"""
 
     @abc.abstractmethod
     def get_channel_obj(self):
@@ -920,12 +905,72 @@ class SocialNetwork():
     def get_name(self):
         """Return the name of the channel"""
 
+    @abc.abstractmethod
+    def send_message(self, message, type_msg, recipient_id, payload):
+        """Save app post in the database"""
+
+    def run_msg_dispatcher(self):
+        while self.msg_dispatcher_active:
+            if MsgQueue.objects.exists():
+                try:
+                    msg_to_dispatch = MsgQueue.objects.earliest('timestamp')
+                    payload_hash = json.loads(msg_to_dispatch.payload)
+                    if msg_to_dispatch.type == "PU":  # Public Posts
+                        res = self._post_public(msg_to_dispatch.message_text, payload_hash)
+                    elif msg_to_dispatch.type == "RE":  # Reply
+                        res = self._reply_to(msg_to_dispatch.message_text, msg_to_dispatch.recipient_id, payload_hash)
+                    else:  # Direct message
+                        res = self._send_direct_message(msg_to_dispatch.message_text, payload_hash['author'], payload_hash)
+                    if res['delivered']:
+                        msg_to_dispatch.delete()
+                    else:
+                        if res['response'][0]['code'] == self.msg_duplicate_code:
+                            msg_to_dispatch.delete()
+                        # Need to add actions for other errors, so far only duplicate messages are considered
+                except MsgQueue.DoesNotExist:
+                    pass
+            else:
+                time.sleep(10)  # Wait some time
+
+    def save_post_db(self, payload, response, channel):
+        parent_post_id = payload['parent_post_id']
+        post_id = payload['post_id']
+        type_msg = payload['type_msg']
+        initiative = Initiative.objects.get(pk=payload['initiative_id'])
+        campaign = Campaign.objects.get(pk=payload['campaign_id'])
+        challenge = Challenge.objects.get(pk=payload['challenge_id'])
+        if parent_post_id is not None:
+            app_parent_post = AppPost.objects.get(id_in_channel=parent_post_id)
+        else:
+            app_parent_post = None
+        try:
+            contribution_parent_post = ContributionPost.objects.get(id_in_channel=post_id)
+        except ContributionPost.DoesNotExist:
+            contribution_parent_post = None
+        app_post = AppPost(id_in_channel=channel.get_id_post(response), datetime=timezone.now(),
+                           text=channel.get_text_post(response), url=channel.build_url_post(response),
+                           app_parent_post=app_parent_post, initiative=initiative, campaign=campaign,
+                           contribution_parent_post=contribution_parent_post, challenge=challenge,
+                           channel=channel.get_channel_obj(), votes=0, re_posts=0, bookmarks=0, delivered=True,
+                           category=type_msg)
+        app_post.save(force_insert=True)
+        if app_post.id is None:
+            if channel.delete_post(response) is not None:
+                logger.error("The app post couldn't be saved into the db, so its corresponding post was deleted from "
+                             "%s" % channel.get_name())
+            else:
+                logger.critical("The app post couldn't be saved into the db, but its corresponding post couldn't be "
+                                "delete from %s. The app may be in an inconsistent state" % channel.get_name())
+        else:
+            logger.info("The app post with the id: %s was created" % app_post.id)
+
 
 class Twitter(SocialNetwork):
     auth_handler = None
     api = None
     channel = None
     stream = None
+    accounts = None
 
     def __init__(self):
         self.channel = Channel.objects.get(name="twitter")
@@ -933,38 +978,56 @@ class Twitter(SocialNetwork):
     def authenticate(self):
         self.auth_handler = tweepy.OAuthHandler(self.channel.consumer_key, self.channel.consumer_secret)
         self.auth_handler.set_access_token(self.channel.access_token, self.channel.access_token_secret)
-        self.api = tweepy.API(self.auth_handler)
+        self.api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
     def listen(self, followings, initiatives):
         hashtags = self.build_hashtag_array(initiatives)
-        accounts = self.build_account_array(followings)
+        self.accounts = self.build_account_array(followings)
         manager = PostManager(self)
         listener = TwitterListener(manager)
         self.stream = tweepy.Stream(self.auth_handler, listener)
-        self.stream.filter(follow=accounts, track=hashtags, async=True)
+        self.stream.filter(follow=self.accounts, track=hashtags, async=True)
         self.channel.on()
         logger.info("Starting to listen Twitter Stream")
+        self.msg_dispatcher_active = True
+        thread_dispatcher = Thread(target=self.run_msg_dispatcher)
+        thread_dispatcher.start()
+        logger.info("Message Dispatcher on")
 
-    def post_public(self, message):
-        try:
-            return self.api.update_status(status=message)
-        except tweepy.TweepError, e:
-            logger.error("The post couldn't be delivered. %s" % e.reason)
-            return None
+    def send_message(self, message, type_msg, recipient_id=None, payload=None):
+        msg_queue = MsgQueue(message_text=message, recipient_id=recipient_id, type=type_msg, channel=self.channel,
+                             payload=payload)
+        msg_queue.save(force_insert=True)
 
-    def send_direct_message(self, id_user, message):
+    def _post_public(self, message, payload):
         try:
-            return self.api.send_direct_message(user_id=id_user,text=message)
+            response = self.api.update_status(status=message)
+            logger.info("The post '%s' has been published through Twitter" % message)
+            self.save_post_db(payload, response, self)
+            return {'delivered': True, 'response': response}
         except tweepy.TweepError, e:
-            logger.error("The post couldn't be delivered. %s" % e.reason)
-            return None
+            logger.error("The post couldn't be delivered. Reason: %s" % e.reason[0]['message'])
+            return {'delivered': False, 'response': e.reason}
 
-    def reply_to(self, post, message):
+    def _send_direct_message(self, message, author_username, payload):
         try:
-            return self.api.update_status(status=message, in_reply_to_status_id=post.id_str)
+            response = self.api.send_direct_message(screen_name=author_username, text=message)
+            logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_username))
+            self.save_post_db(payload, response, self)
+            return {'delivered': True, 'response': response}
         except tweepy.TweepError, e:
-            logger.error("The post couldn't be delivered. %s" % e.reason)
-            return None
+            logger.error("The post couldn't be delivered. %s" % e.reason[0]['message'])
+            return {'delivered': False, 'response': e.reason}
+
+    def _reply_to(self, message, id_post, payload):
+        try:
+            response = self.api.update_status(status=message, in_reply_to_status_id=id_post)
+            logger.info("The post '%s' has been sent to %s through Twitter" % (message, payload['author']))
+            self.save_post_db(payload, response, self)
+            return {'delivered': True, 'response': response}
+        except tweepy.TweepError, e:
+            logger.error("The post couldn't be delivered. %s" % e.reason[0]['message'])
+            return {'delivered': False, 'response': e.reason}
 
     def get_post(self, id_post):
         return self.api.get_status(id_post)
@@ -1042,15 +1105,16 @@ class Twitter(SocialNetwork):
         return None
 
     def disconnect(self):
+        self.msg_dispatcher_active = False
         if self.stream is not None:
             self.stream.disconnect()
             self.channel.off()
-            logger.info("Twitter channel has been disconnected...")
+            logger.info("Twitter channel has been disconnected")
         else:
             logger.debug("Twitter channel is already disconnected")
 
-    def get_app_account_id(self):
-        return self.channel.app_account_id
+    def get_account_ids(self):
+        return self.accounts
 
     def get_channel_obj(self):
         return self.channel

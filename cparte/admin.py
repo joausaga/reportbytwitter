@@ -1,11 +1,11 @@
 from django.contrib import admin
 from django.utils import timezone
-from django.utils.formats import localize
 from django.utils.html import format_html
 from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter, \
                           ContributionPost, Account
 
 import logging
+import json
 
 
 logger = logging.getLogger(__name__)
@@ -102,25 +102,18 @@ class AppPostAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         ch = Channel.objects.get(name=obj.channel.name)
         if obj.channel.name == "Twitter":
-            social_network = Twitter(ch.consumer_key, ch.consumer_secret, ch.access_token, ch.access_token_secret)
+            social_network = Twitter()
         else:
             raise Exception("Unknown channel named %s" % obj.channel.name)
 
         if social_network:
             social_network.authenticate()
             if len(obj.text) <= ch.max_length_msgs:
-                response = social_network.post_public(obj.text)
-                if response is not None:
-                    logger.info("The post has been published into the channel %s" % obj.channel.name)
-                    app_post = AppPost(id_in_channel=social_network.get_id_post(response), datetime=timezone.now(),
-                                       text=obj.text, url=social_network.build_url_post(response), app_parent_post=None,
-                                       contribution_parent_post=None, initiative=obj.initiative, campaign=obj.campaign,
-                                       challenge=obj.challenge, channel=ch, votes=0, re_posts=0, bookmarks=0,
-                                       delivered=True, category=obj.category)
-                    app_post.save(force_insert=True)
-                    logger.info("The post has been saved into the DB")
-                else:
-                    raise Exception("Error when trying to publish the post into the channel %s" % obj.channel.name)
+                payload = {'parent_post_id': None, 'type_msg': obj.category,
+                           'post_id': None, 'initiative_id': obj.initiative.id,
+                           'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id}
+                payload_json = json.dumps(payload)
+                social_network.send_message(message=obj.text, type_msg="PU", payload=payload_json)
             else:
                 raise Exception("The length of the message exceed the channel's limit (%s) for messages" % ch.max_length_msgs)
         else:
@@ -144,7 +137,7 @@ class ContributionPostAdmin(admin.ModelAdmin):
 
 
 class ChannelAdmin(admin.ModelAdmin):
-    list_display = ('id','name', 'enabled', 'app_account_id', 'status', 'row_actions')
+    list_display = ('id','name', 'enabled', 'status', 'row_actions')
     ordering = ('id',)
 
     def row_actions(self, obj):
