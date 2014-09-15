@@ -261,7 +261,8 @@ class AppPost(models.Model):
     re_posts = models.IntegerField(default=0)       # e.g. Share in Facebook, RT in Twitter
     bookmarks = models.IntegerField(default=0)      # e.g. Favourite in Twitter
     delivered = models.BooleanField(default=True)
-    CATEGORIES = (('NT', 'Notification'), ('TH', 'Thanks'), ('EN', 'Engagement'), ('PR', 'Promotion'))
+    CATEGORIES = (('NT', 'Notification'), ('TH', 'Thanks'), ('EN', 'Engagement'), ('PR', 'Promotion'),
+                  ('THL', 'Thanks with link'))
     category = models.CharField(max_length=3, choices=CATEGORIES)
 
     def __unicode__(self):
