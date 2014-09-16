@@ -788,11 +788,11 @@ class PostManager():
                 short_url = resp['id']
             else:
                 short_url = long_url
-                logger.error("Error %s trying to short the initiative URL. Reason: %s" % (resp['error']['code'],
-                                                                                          resp['error']['message']))
+                logger.error("Error %s when trying to short the initiative URL. Reason: %s" % (resp['error']['code'],
+                                                                                               resp['error']['message']))
         except Exception, e:
             short_url = long_url
-            logger.error("Error trying to short the initiative URL. Message: %s" % e)
+            logger.error("Error when trying to short the initiative URL. Message: %s" % e)
         return short_url
 
 
