@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from threading import Thread
+from apiclient.discovery import build
 import tweepy
 import abc
 import re
@@ -85,7 +86,7 @@ class Message(models.Model):
 
 class Setting(models.Model):
     name = models.CharField(max_length=50)
-    description = models.TextField(null=True)
+    description = models.TextField(null=True, blank=True)
     value = models.TextField()
     TYPES = (
         ('INT', 'Integer'),
@@ -261,8 +262,9 @@ class AppPost(models.Model):
     re_posts = models.IntegerField(default=0)       # e.g. Share in Facebook, RT in Twitter
     bookmarks = models.IntegerField(default=0)      # e.g. Favourite in Twitter
     delivered = models.BooleanField(default=True)
-    CATEGORIES = (('NT', 'Notification'), ('TH', 'Thanks'), ('EN', 'Engagement'), ('PR', 'Promotion'))
+    CATEGORIES = (('EN', 'Engagement'), ('PR', 'Promotion'))
     category = models.CharField(max_length=3, choices=CATEGORIES)
+    payload = models.TextField(null=True)
 
     def __unicode__(self):
         if self.url:
@@ -305,14 +307,14 @@ class MetaChannel():
     def broadcast(cls, message):
         for name in cls.channels.iterkeys():
             if cls.channels[name]:
-                cls.channels[name].post_public(message)
+                cls.channels[name].send_message(message=message, type_msg="PU")
 
     @classmethod
     def post_public(cls, channels, message):
         for channel in channels:
             channel = channel.lower()
             if cls.channels[channel]:
-                cls.channels[channel].post_public(message)
+                cls.channels[channel].send_message(message=message, type_msg="PU")
             else:
                 logger.error("%s channel is unavailable, it cannot post into it" % channel)
 
@@ -320,15 +322,15 @@ class MetaChannel():
     def send_direct_message(cls, channel_name, recipient, message):
         channel_name = channel_name.lower()
         if cls.channels[channel_name]:
-            cls.channels[channel_name].send_direct_message(recipient, message)
+            cls.channels[channel_name].send_message(message=message, type_msg="DM", payload={'author':recipient})
         else:
             logger.error("%s channel is unavailable, it cannot send direct message through it" % channel_name)
 
     @classmethod
-    def reply_to(cls, channel_name, id_message, new_message):
+    def reply_to(cls, channel_name, id_message, message):
         channel_name = channel_name.lower()
         if cls.channels[channel_name]:
-            cls.channels[channel_name].reply_to(id_message, new_message)
+            cls.channels[channel_name].send_message(message=message, type_msg="RE", recipient_id=id_message)
         else:
             logger.error("%s channel is unavailable, it cannot post to a user through it" % channel_name)
 
@@ -368,6 +370,7 @@ class MetaChannel():
 class PostManager():
     channel = None
     settings = {}
+    url_shortener = None
     NO_LIMIT_ANSWERS = -1
     NOTIFICATION_MESSAGE = "NT"
     ENGAGE_MESSAGE = "EN"
@@ -377,12 +380,18 @@ class PostManager():
     def __init__(self, channel):
         self.channel = channel
         self._set_settings()
+        self.url_shortener = build(serviceName=self.settings['urlshortener_api_name'],
+                                   version=self.settings['urlshortener_api_version'],
+                                   developerKey=self.settings['urlshortener_api_key'])
 
     def _set_settings(self):
         try:
             self.settings['limit_wrong_inputs'] = Setting.objects.get(name="limit_wrong_inputs").get_casted_value()
             self.settings['limit_wrong_requests'] = Setting.objects.get(name="limit_wrong_requests").get_casted_value()
             self.settings['datetime_format'] = Setting.objects.get(name="datetime_format").value
+            self.settings['urlshortener_api_key'] = Setting.objects.get(name="gurlshortener_api_key").value
+            self.settings['urlshortener_api_name'] = Setting.objects.get(name="gurlshortener_api_name").value
+            self.settings['urlshortener_api_version'] = Setting.objects.get(name="gurlshortener_api_version").value
         except Setting.DoesNotExist as e:
             e_msg = "Unknown setting %s, the post manager cannot be started" % e
             logger.critical(e_msg)
@@ -725,9 +734,11 @@ class PostManager():
         current_datetime = time.strftime(self.settings['datetime_format'])
         type_msg = ""
         post_id = self.channel.get_id_post(post)
+        short_url = None
 
         if message.category == "thanks_contribution":
-            msg = message.body % (author_username, challenge.hashtag, initiative.url)
+            short_url = self._do_short_app_url(initiative.url)
+            msg = message.body % (author_username, challenge.hashtag, short_url)
             type_msg = "TH"
         elif message.category == "incorrect_answer":
             msg = message.body % (author_username, current_datetime)
@@ -739,7 +750,8 @@ class PostManager():
                                   new_contribution)
             type_msg = "NT"
         elif message.category == "thanks_change":
-            msg = message.body % (author_username, challenge.hashtag, extra.contribution, initiative.url)
+            short_url = self._do_short_app_url(initiative.url)
+            msg = message.body % (author_username, challenge.hashtag, extra.contribution, short_url)
             type_msg = "TH"
         elif message.category == "contribution_cannot_save":
             msg = message.body % (author_username, current_datetime)
@@ -762,9 +774,26 @@ class PostManager():
         if msg is not None:
             payload = {'parent_post_id': self.channel.get_parent_post_id(post), 'type_msg': type_msg,
                        'post_id': post_id, 'initiative_id': initiative.id, 'author': author_username,
-                       'campaign_id': challenge.campaign.id, 'challenge_id': challenge.id}
+                       'campaign_id': challenge.campaign.id, 'challenge_id': challenge.id,
+                       'initiative_short_url': short_url}
             payload_json = json.dumps(payload)
             self.channel.send_message(message=msg, type_msg="RE", recipient_id=post_id, payload=payload_json)
+
+    def _do_short_app_url(self, long_url):
+        try:
+            url = self.url_shortener.url()
+            body = {'longUrl': long_url}
+            resp = url.insert(body=body).execute()
+            if 'error' not in resp:
+                short_url = resp['id']
+            else:
+                short_url = long_url
+                logger.error("Error %s trying to short the initiative URL. Reason: %s" % (resp['error']['code'],
+                                                                                          resp['error']['message']))
+        except Exception, e:
+            short_url = long_url
+            logger.error("Error trying to short the initiative URL. Message: %s" % e)
+        return short_url
 
 
 class SocialNetwork():
@@ -818,15 +847,19 @@ class SocialNetwork():
         return accounts
 
     @abc.abstractmethod
+    def send_message(self, message, type_msg, recipient_id, payload):
+        """Save app post in the database"""
+
+    @abc.abstractmethod
     def _post_public(self, message, payload):
         """Post a public messages into the channel"""
 
     @abc.abstractmethod
-    def _send_direct_message(self, id_user, message, payload):
+    def _send_direct_message(self, message, author_username, payload):
         """Send a private message to a particular user"""
 
     @abc.abstractmethod
-    def _reply_to(self, post, message, payload):
+    def _reply_to(self, message, id_post, payload):
         """Reply to an existing post"""
 
     @abc.abstractmethod
@@ -905,10 +938,6 @@ class SocialNetwork():
     def get_name(self):
         """Return the name of the channel"""
 
-    @abc.abstractmethod
-    def send_message(self, message, type_msg, recipient_id, payload):
-        """Save app post in the database"""
-
     def run_msg_dispatcher(self):
         while self.msg_dispatcher_active:
             if MsgQueue.objects.exists():
@@ -936,6 +965,7 @@ class SocialNetwork():
         parent_post_id = payload['parent_post_id']
         post_id = payload['post_id']
         type_msg = payload['type_msg']
+        initiative_short_url = payload['initiative_short_url']
         initiative = Initiative.objects.get(pk=payload['initiative_id'])
         campaign = Campaign.objects.get(pk=payload['campaign_id'])
         challenge = Challenge.objects.get(pk=payload['challenge_id'])
@@ -952,7 +982,7 @@ class SocialNetwork():
                            app_parent_post=app_parent_post, initiative=initiative, campaign=campaign,
                            contribution_parent_post=contribution_parent_post, challenge=challenge,
                            channel=channel.get_channel_obj(), votes=0, re_posts=0, bookmarks=0, delivered=True,
-                           category=type_msg)
+                           category=type_msg, payload=initiative_short_url)
         app_post.save(force_insert=True)
         if app_post.id is None:
             if channel.delete_post(response) is not None:
