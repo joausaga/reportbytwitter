@@ -805,10 +805,12 @@ class SocialNetwork():
     @abc.abstractmethod
     def authenticate(self):
         """Authenticate into the channel"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def listen(self, users, initiatives):
         """Listen the channel"""
+        raise NotImplementedError
 
     def build_hashtag_array(self, initiative_ids):
         hashtags = []
@@ -849,94 +851,117 @@ class SocialNetwork():
     @abc.abstractmethod
     def send_message(self, message, type_msg, recipient_id, payload):
         """Save app post in the database"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def _post_public(self, message, payload):
         """Post a public messages into the channel"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def _send_direct_message(self, message, author_username, payload):
         """Send a private message to a particular user"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def _reply_to(self, message, id_post, payload):
         """Reply to an existing post"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_post(self, id_post):
         """Get a post previously published in the channel and identified by id_post"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def delete_post(self, id_post):
         """Delete the post identified by id_post"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_info_user(self, id_user):
         """Get information about a particular user"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_author_username(self, post):
         """Get the username (screen-name) of the post author"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_type_post(self, message):
         """Whether it is a new post or a reply"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_text_post(self, post):
         """Return the text of the post"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_id_post(self, post):
         """Return the id of the post"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_parent_post_id(self, post):
         """Return the id of the post that the current post is in reply to """
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_info_post(self, post):
         """Return the id, datetime, text, url, author, initiative, channel, votes, re_posts and bookmarks of the post"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def build_url_post(self, post):
         """Build and return the url of the post"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_author(self, post):
         """Return the author of the post. Here information about the author is taken from the database"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_author_id(self, post):
         """Return the id author of the post. Here the id of the author is taken from the post itself"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def register_new_author(self, post):
         """Register in the database a new author"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def has_initiative_hashtags(self, post):
         """Check whether the text of the post has the hashtags the identifies the initiative"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_challenge_info(self, post, initiative):
         """Return information about the challenge"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def disconnect(self):
         """Disconnect the established connection"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_account_ids(self):
         """Return the ids of the accounts that are bound to the application"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_channel_obj(self):
         """Return the model object associated to the channel"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_name(self):
         """Return the name of the channel"""
+        raise NotImplementedError
 
     def run_msg_dispatcher(self):
         while self.msg_dispatcher_active:
