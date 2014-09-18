@@ -684,7 +684,7 @@ class PostManager():
     def _has_already_posted(self, post, challenge):
         author = self.channel.get_author(post)
         try:
-            return ContributionPost.objects.filter(challenge=challenge, author=author.id).order_by('-datetime')
+            return ContributionPost.objects.filter(challenge=challenge, author=author.id, temporal=False).order_by('-datetime')
         except ContributionPost.DoesNotExist:
             return None
 
@@ -702,7 +702,16 @@ class PostManager():
                                         votes=post_curated_info['votes'], re_posts=post_curated_info['re_posts'],
                                         bookmarks=post_curated_info['bookmarks'], temporal=temporal)
         post_to_save.save(force_insert=True)
+        if not temporal:
+            self._delete_temporal_post(post_curated_info['author'], challenge)
         return post_to_save
+
+    # Delete any temporal post existing within 'challenge' and posted by 'author'
+    def _delete_temporal_post(self, author, challenge):
+        try:
+            ContributionPost.objects.filter(challenge=challenge, author=author.id, temporal=True).delete()
+        except ContributionPost.DoesNotExist:
+            pass
 
     def _author_has_extrainfo(self, post):
         author = self.channel.get_author(post)
@@ -737,7 +746,7 @@ class PostManager():
         short_url = None
 
         if message.category == "thanks_contribution":
-            short_url = self._do_short_app_url(initiative.url)
+            short_url = self._do_short_initiative_url(initiative.url)
             msg = message.body % (author_username, challenge.hashtag, short_url)
             type_msg = "TH"
         elif message.category == "incorrect_answer":
@@ -750,7 +759,7 @@ class PostManager():
                                   new_contribution)
             type_msg = "NT"
         elif message.category == "thanks_change":
-            short_url = self._do_short_app_url(initiative.url)
+            short_url = self._do_short_initiative_url(initiative.url)
             msg = message.body % (author_username, challenge.hashtag, extra.contribution, short_url)
             type_msg = "TH"
         elif message.category == "contribution_cannot_save":
@@ -779,7 +788,7 @@ class PostManager():
             payload_json = json.dumps(payload)
             self.channel.send_message(message=msg, type_msg="RE", recipient_id=post_id, payload=payload_json)
 
-    def _do_short_app_url(self, long_url):
+    def _do_short_initiative_url(self, long_url):
         try:
             url = self.url_shortener.url()
             body = {'longUrl': long_url}
