@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
 from threading import Thread
 from apiclient.discovery import build
 import tweepy
@@ -26,10 +27,6 @@ class Channel(models.Model):
     name = models.CharField(max_length=50)
     enabled = models.BooleanField(default=False)
     status = models.BooleanField(default=False, blank=True, editable=False)
-    consumer_key = models.CharField(max_length=100)
-    consumer_secret = models.CharField(max_length=100)
-    access_token = models.CharField(max_length=100)
-    access_token_secret = models.CharField(max_length=100)
     url = models.URLField(null=True)
     max_length_msgs = models.IntegerField(null=True, blank=True, help_text="Maximum length of messages to send through"
                                                                            "this channel from the application. Leave it"
@@ -351,10 +348,10 @@ class MetaChannel():
             logger.error("%s channel is unavailable, it cannot get info about a user" % channel_name)
 
     @classmethod
-    def listen(cls, channel_name, followings, initiatives):
+    def listen(cls, channel_name):
         channel_name = channel_name.lower()
         if cls.channels[channel_name.lower()]:
-            cls.channels[channel_name].listen(followings, initiatives)
+            cls.channels[channel_name].listen()
         else:
             logger.error("%s channel is unavailable, it cannot be listened" % channel_name)
 
@@ -365,6 +362,22 @@ class MetaChannel():
             cls.channels[channel_name].disconnect()
         else:
             logger.error("%s channel is unavailable, it cannot disconnect it" % channel_name)
+
+    @classmethod
+    def set_initiatives(cls, channel_name, initiative_ids):
+        channel_name = channel_name.lower()
+        if cls.channels[channel_name]:
+            cls.channels[channel_name].set_initiatives(initiative_ids)
+        else:
+            logger.error("%s channel is unavailable, initiatives cannot be set" % channel_name)
+
+    @classmethod
+    def set_accounts(cls, channel_name, account_ids):
+        channel_name = channel_name.lower()
+        if cls.channels[channel_name]:
+            cls.channels[channel_name].set_accounts(account_ids)
+        else:
+            logger.error("%s channel is unavailable, accounts cannot be set" % channel_name)
 
 
 class PostManager():
@@ -380,16 +393,18 @@ class PostManager():
     def __init__(self, channel):
         self.channel = channel
         self._set_settings()
-        self.url_shortener = build(serviceName=self.settings['urlshortener_api_name'],
-                                   version=self.settings['urlshortener_api_version'],
-                                   developerKey=self.settings['urlshortener_api_key'])
+        if settings.SHORT_URL:
+            self.url_shortener = build(serviceName=self.settings['urlshortener_api_name'],
+                                       version=self.settings['urlshortener_api_version'],
+                                       developerKey=settings.URL_SHORTENER_API_KEY)
+        else:
+            self.url_shortener = None
 
     def _set_settings(self):
         try:
             self.settings['limit_wrong_inputs'] = Setting.objects.get(name="limit_wrong_inputs").get_casted_value()
             self.settings['limit_wrong_requests'] = Setting.objects.get(name="limit_wrong_requests").get_casted_value()
             self.settings['datetime_format'] = Setting.objects.get(name="datetime_format").value
-            self.settings['urlshortener_api_key'] = Setting.objects.get(name="gurlshortener_api_key").value
             self.settings['urlshortener_api_name'] = Setting.objects.get(name="gurlshortener_api_name").value
             self.settings['urlshortener_api_version'] = Setting.objects.get(name="gurlshortener_api_version").value
         except Setting.DoesNotExist as e:
@@ -402,12 +417,14 @@ class PostManager():
         if author is None or not author.is_banned():
             type_post = self.channel.get_type_post(post)
             if type_post[0] == "reply" or type_post[0] == "status":
-                self._do_manage(post, author, type_post[1])
+                return self._do_manage(post, author, type_post[1])
             else:
                 logger.warninig("The type %s of the message is unknown. Message text: '%s'" %
                                 (type_post[0], self.channel.get_text_post(post)))
+                return None
         else:
             logger.info("The post was ignore, its author, called %s, is in the black list" % author.screen_name)
+            return None
 
     def _do_manage(self, post, author, parent_post_id=None):
         app_parent_post = None
@@ -436,7 +453,7 @@ class PostManager():
                 author = self.channel.register_new_author(post)
             logger.info("Post from %s within the initiative: %s, campaign: %s, challenge: %s" %
                         (author.screen_name, challenge.campaign.initiative.name, challenge.campaign.name, challenge.name))
-            self._process_input(post, challenge, parent_post_id)
+            return self._process_input(post, challenge, parent_post_id)
         elif parent_post_id is not None:  # It is a reply but not to a challenge post
             if app_parent_post and app_parent_post.category == self.NOTIFICATION_MESSAGE:
                 # Only process replies that were made to app posts categorized as notification (NT)
@@ -444,12 +461,14 @@ class PostManager():
                 if message:
                     if message.category == "request_author_extrainfo":
                         # It is a reply to an extra info request
-                        self._process_extra_info(post, app_parent_post)
+                        return self._process_extra_info(post, app_parent_post)
                     elif message.category == "incorrect_answer":
                         # It is a reply to a wrong input notification
                         author = self.channel.get_author(post)
                         if not author.is_banned():
-                            self._process_input(post, app_parent_post.challenge, parent_post_id)
+                            return self._process_input(post, app_parent_post.challenge, parent_post_id)
+                        else:
+                            return None
                     elif message.category == "ask_change_contribution":
                         temp_contribution = self._get_contribution_post(app_parent_post)
                         # It is a reply to a question about changing previous input
@@ -459,24 +478,28 @@ class PostManager():
                             if answer_term in self.channel.get_text_post(post).lower():
                                 found_term = True
                         if found_term:
-                            self._update_contribution(post, app_parent_post)
+                            return self._update_contribution(post, app_parent_post)
                         else:
                             new_message = app_parent_post.campaign.messages.get(category="not_understandable_change_contribution_reply")
                             self._send_reply(post, initiative=app_parent_post.initiative, challenge=app_parent_post.challenge,
                                              message=new_message)
                             # If we cannot understand the answer we reply saying that and delete the temporal post
                             temp_contribution.delete()
+                            return new_message
                     elif message.category == "incorrect_author_extrainfo":
                         # It is a reply to a wrong extra info notification
-                        self._process_extra_info(post, app_parent_post)
+                        return self._process_extra_info(post, app_parent_post)
                     else:
                         logger.info("Unknown message category. Text: %s" % app_parent_post.text)
+                        return None
                 else:
                     logger.info("Impossible to determine to which app message this post '%s' belongs to" %
                                 app_parent_post.text)
+                    return None
             else:
                 logger.error("App parent post does not exist, the post: '%s' will be ignored" %
                              self.channel.get_text_post(post))
+                return None
 
     def _get_parent_post_message(self, text_post, campaign):
         messages = list(campaign.messages.all())
@@ -501,7 +524,7 @@ class PostManager():
         if extra_info is not None:
             logger.info("%s's extra information was processed correctly. His/her contribution was permanently saved." %
                         self.channel.get_author(post).name)
-            self._save_temporal_post(post, extra_info, app_parent_post)
+            return self._preserve_temporal_post(post, extra_info, app_parent_post)
         else:
             self._increment_author_wrong_request(post)
             if self._get_author_wrong_request_counter(post) > self.settings['limit_wrong_requests']:
@@ -514,15 +537,18 @@ class PostManager():
                     # Delete the "incomplete" contribution
                     contribution_post = self._get_contribution_post(app_parent_post)
                     contribution_post.delete()
+                    return message
                 else:
                     logger.info("The participant %s has exceed the limit of %s wrong requests, the message will be "
-                                "ignored" % (self.channel.get_author(post).name), self.settings['limit_wrong_requests'])
+                                "ignored" % (self.channel.get_author(post).name, self.settings['limit_wrong_requests']))
+                    return None
             else:
                 logger.info("%s's reply is in an incorrect format" % self.channel.get_author(post).name)
                 message = campaign.extrainfo.messages.get(category="incorrect_author_extrainfo")
                 self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge,message=message)
+                return message
 
-    def _save_temporal_post(self, post, extra_info, app_parent_post):
+    def _preserve_temporal_post(self, post, extra_info, app_parent_post):
         author = self.channel.get_author(post)
         author.set_extra_info(extra_info)
         campaign = app_parent_post.campaign
@@ -532,6 +558,7 @@ class PostManager():
         message = campaign.messages.get(category="thanks_contribution")
         self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message)
         author.reset_mistake_flags()
+        return message
 
     def _update_contribution(self, post, app_parent_post):
         author = self.channel.get_author(post)
@@ -541,6 +568,7 @@ class PostManager():
         if len(contributions) < 2:
             logger.critical("The number of contributions (%s) of the author %s is lower than the required number (2)."
                             % (len(contributions), author.name))
+            return None
         else:
             if len(contributions) > 2:
                 # If there are more than two contributions from where update to the app is in an inconsistent state.
@@ -559,6 +587,7 @@ class PostManager():
                              extra=new_post)
             old_post.delete()  # Delete the oldest
             author.reset_mistake_flags()
+            return message
 
     def _get_extra_info(self, text, campaign):
         reg_expr = re.compile(campaign.extrainfo.format_answer)
@@ -606,13 +635,15 @@ class PostManager():
                             message = campaign.messages.get(category="ask_change_contribution")
                             self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge,
                                              message=message, extra=(curated_input, existing_post))
+                            return message
                         else:
                             logger.info("The new contribution: %s is equal as the already existing" % curated_input)
+                            return None
 
                     else:
                         if len(existing_posts) <= challenge.answers_from_same_author:
                             # Save participant's answer if the participant is still under the limit of allowed answers
-                            self._do_process_input(post, campaign, challenge, curated_input, parent_post_id)
+                            return self._do_process_input(post, campaign, challenge, curated_input, parent_post_id)
                         else:
                             # Send a message saying that he/she has reached the limit of allowed answers
                             message = campaign.messages.get(category="limit_answers_reached")
@@ -621,10 +652,11 @@ class PostManager():
                             logger.info("The participant %s has reached the limit of %s contributions allowed in the "
                                         "challenge %s" % (self.channel.get_author(post).name,
                                                           challenge.answers_from_same_author, challenge.name))
+                            return message
                 else:
-                    self._do_process_input(post, campaign, challenge, curated_input, parent_post_id)
+                    return self._do_process_input(post, campaign, challenge, curated_input, parent_post_id)
             else:
-                self._do_process_input(post, campaign, challenge, curated_input, parent_post_id)
+                return self._do_process_input(post, campaign, challenge, curated_input, parent_post_id)
         else:
             # The input is not valid
             self._increment_author_wrong_input(post)
@@ -635,6 +667,7 @@ class PostManager():
                 self._ban_author(post)
                 new_message = campaign.messages.get(category="author_banned")
                 self._send_reply(post, initiative=campaign.initiative, challenge=challenge, message=new_message)
+                return new_message
             else:
                 logger.info("The contribution '%s' of the participant %s does not satisfy the format required by the "
                             "challenge %s" % (self.channel.get_text_post(post), self.channel.get_author(post).name,
@@ -642,6 +675,7 @@ class PostManager():
                 # Reply saying that his/her input was wrong
                 message = campaign.messages.get(category="incorrect_answer")
                 self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message)
+                return message
 
     def _do_process_input(self, post, campaign, challenge, curated_input, parent_post_id):
         if campaign.extrainfo is None or self._author_has_extrainfo(post) is not None:
@@ -660,6 +694,7 @@ class PostManager():
             logger.info("The contribution '%s' of the participant %s to the challenge %s has been saved temporarily "
                         "until getting the required additional information of the contributor" %
                         (curated_input, self.channel.get_author(post).name, challenge.name))
+        return message
 
     def _validate_input(self, post, challenge):
         curated_text = self.channel.get_text_post(post).encode('utf-8')
@@ -710,8 +745,9 @@ class PostManager():
     def _delete_temporal_post(self, author, challenge):
         try:
             ContributionPost.objects.filter(challenge=challenge, author=author.id, temporal=True).delete()
+            return True
         except ContributionPost.DoesNotExist:
-            pass
+            return False
 
     def _author_has_extrainfo(self, post):
         author = self.channel.get_author(post)
@@ -746,7 +782,7 @@ class PostManager():
         short_url = None
 
         if message.category == "thanks_contribution":
-            short_url = self._do_short_initiative_url(initiative.url)
+            short_url = self._do_short_initiative_url(initiative.url) if self.url_shortener else initiative.url
             msg = message.body % (author_username, challenge.hashtag, short_url)
             type_msg = "TH"
         elif message.category == "incorrect_answer":
@@ -759,7 +795,7 @@ class PostManager():
                                   new_contribution)
             type_msg = "NT"
         elif message.category == "thanks_change":
-            short_url = self._do_short_initiative_url(initiative.url)
+            short_url = self._do_short_initiative_url(initiative.url) if self.url_shortener else initiative.url
             msg = message.body % (author_username, challenge.hashtag, extra.contribution, short_url)
             type_msg = "TH"
         elif message.category == "contribution_cannot_save":
@@ -808,6 +844,8 @@ class PostManager():
 class SocialNetwork():
     __metaclass__  = abc.ABCMeta
     initiatives = None
+    accounts = None
+    hashtags = None
     msg_duplicate_code = 187
     msg_dispatcher_active = False
 
@@ -816,13 +854,7 @@ class SocialNetwork():
         """Authenticate into the channel"""
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def listen(self, users, initiatives):
-        """Listen the channel"""
-        raise NotImplementedError
-
-    def build_hashtag_array(self, initiative_ids):
-        hashtags = []
+    def set_initiatives(self, initiative_ids):
         for id_initiative in initiative_ids:
             try:
                 initiative = Initiative.objects.get(pk=id_initiative)
@@ -833,29 +865,32 @@ class SocialNetwork():
 
             if self.initiatives:
                 self.initiatives.append(initiative)
-                hashtags.append(initiative.hashtag)
+                self.hashtags.append(initiative.hashtag)
             else:
                 self.initiatives = [initiative]
-                hashtags = [initiative.hashtag]
+                self.hashtags = [initiative.hashtag]
             # Add to the array of hashtags the hashtags of the initiative's campaigns
             for campaign in initiative.campaign_set.all():
                 if campaign.hashtag is not None:
-                    hashtags.append(campaign.hashtag)
+                    self.hashtags.append(campaign.hashtag)
                 # Add to the array of hashtags the hashtags of the campaign's challenges
                 for challenge in campaign.challenge_set.all():
-                    hashtags.append(challenge.hashtag)
-        return hashtags
+                    self.hashtags.append(challenge.hashtag)
 
-    def build_account_array(self, account_ids):
-        accounts = []
+    def set_accounts(self, account_ids):
+        self.accounts = []
         for id_account in account_ids:
             try:
-                accounts.append(Account.objects.get(pk=id_account).id_in_channel)
+                self.accounts.append(Account.objects.get(pk=id_account).id_in_channel)
             except Account.DoesNotExist:
                 e_msg = "Does not exist an account identified with the id %s" % id_account
                 logger.critical(e_msg)
                 raise Exception(e_msg)
-        return accounts
+
+    @abc.abstractmethod
+    def listen(self):
+        """Listen the channel"""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def send_message(self, message, type_msg, recipient_id, payload):
@@ -1034,23 +1069,20 @@ class Twitter(SocialNetwork):
     api = None
     channel = None
     stream = None
-    accounts = None
 
     def __init__(self):
         self.channel = Channel.objects.get(name="twitter")
 
     def authenticate(self):
-        self.auth_handler = tweepy.OAuthHandler(self.channel.consumer_key, self.channel.consumer_secret)
-        self.auth_handler.set_access_token(self.channel.access_token, self.channel.access_token_secret)
+        self.auth_handler = tweepy.OAuthHandler(settings.TWITTER_CONSUMER_KEY, settings.TWITTER_CONSUMER_SECRET)
+        self.auth_handler.set_access_token(settings.TWITTER_ACCESS_TOKEN, settings.TWITTER_ACCESS_TOKEN_SECRET)
         self.api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
-    def listen(self, followings, initiatives):
-        hashtags = self.build_hashtag_array(initiatives)
-        self.accounts = self.build_account_array(followings)
+    def listen(self):
         manager = PostManager(self)
         listener = TwitterListener(manager)
         self.stream = tweepy.Stream(self.auth_handler, listener)
-        self.stream.filter(follow=self.accounts, track=hashtags, async=True)
+        self.stream.filter(follow=self.accounts, track=self.hashtags, async=True)
         self.channel.on()
         logger.info("Starting to listen Twitter Stream")
         self.msg_dispatcher_active = True

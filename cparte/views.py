@@ -26,7 +26,9 @@ def listen(request, channel_name):
     initiatives = [1,2]   # Add here the ids of the initiatives
     accounts = [1]  # Add here the ids of the accounts
     MetaChannel.authenticate(channel_name=channel_name)
-    MetaChannel.listen(channel_name=channel_name, followings=accounts, initiatives=initiatives)
+    MetaChannel.set_initiatives(channel_name=channel_name, initiative_ids=initiatives)
+    MetaChannel.set_accounts(channel_name=channel_name, account_ids=accounts)
+    MetaChannel.listen(channel_name=channel_name)
     return HttpResponseRedirect("/admin/cparte/channel/")
 
 
