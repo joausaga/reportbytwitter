@@ -34,7 +34,16 @@ class TwitterTestCase(TestCase):
                 {'id': "509884504974950401", 'type': 'correct_post_existing_user_new_challenge', 'status': ''},
                 {'id': "513022343044542464", 'type': 'incorrect_post_existing_user_new_challenge', 'status': ''},
                 {'id': "509053831166980096", 'type': 'correct_post_existing_user_answered_challenge', 'status': ''},
-                {'id': "513020781341573120", 'type': 'incorrect_post_existing_user_answered_challenge', 'status': ''},]
+                {'id': "513020781341573120", 'type': 'incorrect_post_existing_user_answered_challenge', 'status': ''},
+                {'id': "513130923701727233", 'type': 'incorrect_post', 'status': ''},
+                {'id': "513131513001426946", 'type': 'incorrect_post_to_incorrect_answer_notification', 'status': ''},
+                {'id': "513134758193156097", 'type': 'correct_post_to_incorrect_answer_notification', 'status': ''},
+                {'id': "513135466539798529", 'type': 'incorrect_extra_info', 'status': ''},
+                {'id': "513137054427783171", 'type': 'correct_extra_info', 'status': ''},
+                {'id': "513141063591010304", 'type': 'incorrect_post_existing_user_new_challenge2', 'status': ''},
+                {'id': "513142210712182785", 'type': 'correct_post_existing_user_incorrect_answer_notification', 'status': ''},
+                {'id': "513144257759023104", 'type': 'correct_post_existing_user_answered_challenge2', 'status': ''},
+                {'id': "513145533175590914", 'type': 'incorrect_answer_change_previos_contribution_request', 'status': ''}]
 
     def get_id_testing_tweets(self):
         tweet_ids = []
@@ -128,13 +137,16 @@ class TestAppBehavior(TwitterTestCase):
         # Input: reply from a new author to incorrect answer notification and containing an unexpected answer
         # Output: a message notifying the author that his/her contribution is in an incorrect format
         incorrect_post = None
+        incorrect_post_to_incorrect_answer_notification = None
         for testing_post in self.testing_posts:
-            if testing_post['type'] == "incorrect_post_new_user_new_challenge":
+            if testing_post['type'] == "incorrect_post":
                 incorrect_post = testing_post['status']
+            if testing_post['type'] == "incorrect_post_to_incorrect_answer_notification":
+                incorrect_post_to_incorrect_answer_notification = testing_post['status']
         output = self.manager.manage_post(incorrect_post)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")
-        output = self.manager.manage_post(incorrect_post)
+        output = self.manager.manage_post(incorrect_post_to_incorrect_answer_notification)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")
 
@@ -142,16 +154,22 @@ class TestAppBehavior(TwitterTestCase):
         # Input: n replies from a new author and containing an unexpected answer
         # Output: a message notifying the author has been banned
         incorrect_post = None
+        incorrect_post_to_incorrect_answer_notification = None
         for testing_post in self.testing_posts:
-            if testing_post['type'] == "incorrect_post_new_user_new_challenge":
+            if testing_post['type'] == "incorrect_post":
                 incorrect_post = testing_post['status']
-        mistake_counter = 0
+            if testing_post['type'] == "incorrect_post_to_incorrect_answer_notification":
+                incorrect_post_to_incorrect_answer_notification = testing_post['status']
+        output = self.manager.manage_post(incorrect_post)
+        self.assertNotEqual(output.category, None)
+        self.assertEqual(output.category, "incorrect_answer")
+        mistake_counter = 1
         while mistake_counter < self.limit_incorrect_inputs:
             output = self.manager.manage_post(incorrect_post)
             self.assertNotEqual(output.category, None)
-            self.assertEqual(output.category, "incorrect_answer")
+            self.assertEqual(output.category, incorrect_post_to_incorrect_answer_notification)
             mistake_counter += 1
-        output = self.manager.manage_post(incorrect_post)
+        output = self.manager.manage_post(incorrect_post_to_incorrect_answer_notification)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "author_banned")
 
@@ -161,9 +179,9 @@ class TestAppBehavior(TwitterTestCase):
         incorrect_post = None
         correct_post = None
         for testing_post in self.testing_posts:
-            if testing_post['type'] == "incorrect_post_new_user_new_challenge":
+            if testing_post['type'] == "incorrect_post":
                 incorrect_post = testing_post['status']
-            if testing_post['type'] == "correct_post_new_user_new_challenge":
+            if testing_post['type'] == "correct_post_to_incorrect_answer_notification":
                 correct_post = testing_post['status']
         output = self.manager.manage_post(incorrect_post)
         self.assertNotEqual(output.category, None)
@@ -176,13 +194,16 @@ class TestAppBehavior(TwitterTestCase):
         # Input: reply from a new author and containing an unexpected extra information
         # Output: a message notifying that the information provided is in an incorrect format asking to send it again
         correct_post = None
+        incorrect_extra_info = None
         for testing_post in self.testing_posts:
-            if testing_post['type'] == "correct_post_new_user_new_challenge":
+            if testing_post['type'] == "correct_post_to_incorrect_answer_notification":
                 correct_post = testing_post['status']
+            if testing_post['type'] == "incorrect_extra_info":
+                incorrect_extra_info = testing_post['status']
         output = self.manager.manage_post(correct_post)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "request_author_extrainfo")
-        output = self.manager.manage_post(correct_post)
+        output = self.manager.manage_post(incorrect_extra_info)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_author_extrainfo")
 
@@ -190,19 +211,22 @@ class TestAppBehavior(TwitterTestCase):
         # Input: n replies from a new author and containing an unexpected extra information
         # Output: a message notifying that his/her contribution cannot be saved
         correct_post = None
+        incorrect_extra_info = None
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_new_user_new_challenge":
                 correct_post = testing_post['status']
+            if testing_post['type'] == "incorrect_extra_info":
+                incorrect_extra_info = testing_post['status']
         output = self.manager.manage_post(correct_post)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "request_author_extrainfo")
         mistake_counter = 0
         while mistake_counter < self.limit_incorrect_requests:
-            output = self.manager.manage_post(correct_post)
+            output = self.manager.manage_post(incorrect_extra_info)
             self.assertNotEqual(output.category, None)
             self.assertEqual(output.category, "incorrect_author_extrainfo")
             mistake_counter += 1
-        output = self.manager.manage_post(correct_post)
+        output = self.manager.manage_post(incorrect_extra_info)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "contribution_cannot_save")
 
@@ -210,23 +234,56 @@ class TestAppBehavior(TwitterTestCase):
         # Input: reply from a new author and containing an expected extra information
         # Output: a message thanking for his/her contribution
         correct_post = None
+        correct_extra_info = None
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_new_user_new_challenge":
                 correct_post = testing_post['status']
+            if testing_post['type'] == "correct_extra_info":
+                correct_extra_info = testing_post['status']
+        output = self.manager.manage_post(correct_post)
+        self.assertNotEqual(output.category, None)
+        self.assertEqual(output.category, "request_author_extrainfo")
+        output = self.manager.manage_post(correct_extra_info)
+        self.assertNotEqual(output.category, None)
+        self.assertEqual(output.category, "thanks_contribution")
 
     def test_manage_post_existing_user_reply_correctly_to_incorrect_answer_notification(self):
         # Input: reply from an existing author and containing an unexpected answer
         # Output: a message thanking for his/her contribution
-        pass
-
-    def test_manage_post_existing_user_reply_correctly_to_change_previous_contribution(self):
-        # Input: reply from an existing author to a request about changing his/her previous contribution
-        # Output: a message thanking the change
-        pass
+        incorrect_post = None
+        correct_post = None
+        for testing_post in self.testing_posts:
+            if testing_post['type'] == "incorrect_post_existing_user_new_challenge2":
+                incorrect_post = testing_post['status']
+            if testing_post['type'] == "correct_post_existing_user_incorrect_answer_notification":
+                correct_post = testing_post['status']
+        output = self.manager.manage_post(incorrect_post)
+        self.assertNotEqual(output.category, None)
+        self.assertEqual(output.category, "incorrect_answer")
+        output = self.manager.manage_post(correct_post)
+        self.assertNotEqual(output.category, None)
+        self.assertEqual(output.category, "thanks_contribution")
 
     def test_manage_post_existing_user_reply_wrongly_to_change_previous_contribution(self):
         # Input: reply from an existing author to a request about changing his/her previous contribution
         # Output: a message notifying that his/her answer couldn't be understood
+        correct_post_answered_challenge = None
+        incorrect_answer_change_previous_contribution = None
+        for testing_post in self.testing_posts:
+            if testing_post['type'] == "correct_post_existing_user_answered_challenge2":
+                correct_post_answered_challenge = testing_post['status']
+            if testing_post['type'] == "incorrect_answer_change_previos_contribution_request":
+                incorrect_answer_change_previous_contribution = testing_post['status']
+        output = self.manager.manage_post(correct_post_answered_challenge)
+        self.assertNotEqual(output.category, None)
+        self.assertEqual(output.category, "ask_change_contribution")
+        output = self.manager.manage_post(incorrect_answer_change_previous_contribution)
+        self.assertNotEqual(output.category, None)
+        self.assertEqual(output.category, "not_understandable_change_contribution_reply")
+
+    def test_manage_post_existing_user_reply_correctly_to_change_previous_contribution(self):
+        # Input: reply from an existing author to a request about changing his/her previous contribution
+        # Output: a message thanking the change
         pass
 
     """

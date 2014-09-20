@@ -483,7 +483,7 @@ class PostManager():
                             new_message = app_parent_post.campaign.messages.get(category="not_understandable_change_contribution_reply")
                             self._send_reply(post, initiative=app_parent_post.initiative, challenge=app_parent_post.challenge,
                                              message=new_message)
-                            # If we cannot understand the answer we reply saying that and delete the temporal post
+                            # If we cannot understand the answer, we reply saying that and delete the temporal post
                             temp_contribution.delete()
                             return new_message
                     elif message.category == "incorrect_author_extrainfo":
