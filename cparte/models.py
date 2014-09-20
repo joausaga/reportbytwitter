@@ -119,9 +119,11 @@ class ExtraInfo(models.Model):
 
 class Author(models.Model):
     name = models.CharField(max_length=100)
+    description = models.TextField(null=True)
     screen_name = models.CharField(max_length=100)
     id_in_channel = models.CharField(max_length=50)
     channel = models.ForeignKey(Channel)
+    language = models.CharField(max_length=10, null=True)
     country = models.CharField(max_length=50, null=True, blank=True)
     city = models.CharField(max_length=50, null=True, blank=True)
     zipcode = models.CharField(max_length=10, null=True, blank=True)
@@ -135,6 +137,7 @@ class Author(models.Model):
     friends = models.IntegerField(editable=False, default=0)
     followers = models.IntegerField(editable=False, default=0)
     groups = models.IntegerField(editable=False, default=0)
+    posts_count = models.IntegerField(editable=False, default=0)
     url = models.URLField(null=True, blank=True)
 
     def __unicode__(self):
@@ -1177,7 +1180,9 @@ class Twitter(SocialNetwork):
         new_author = Author(name=author_post.name, screen_name=author_post.screen_name,
                             id_in_channel=author_post.id_str, channel=self.channel,
                             friends=author_post.friends_count, followers=author_post.followers_count,
-                            url=self.channel.url + post.author.screen_name)
+                            url=self.channel.url + post.author.screen_name,
+                            description=author_post.description.encode('utf-8'), language=author_post.lang,
+                            posts_count=author_post.statuses_count)
         new_author.save(force_insert=True)
         return new_author
 
