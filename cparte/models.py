@@ -9,6 +9,7 @@ import re
 import time
 import logging
 import json
+import ast
 
 logger = logging.getLogger(__name__)
 
@@ -234,17 +235,28 @@ class ContributionPost(models.Model):
     campaign = models.ForeignKey(Campaign)
     challenge = models.ForeignKey(Challenge)
     channel = models.ForeignKey(Channel)
-    temporal = models.BooleanField(default=True)
     votes = models.IntegerField(default=0)      # e.g. +1 in Google+, like in Facebook
     re_posts = models.IntegerField(default=0)   # e.g. Share in Facebook, RT in Twitter
     bookmarks = models.IntegerField(default=0)  # e.g. Favourite in Twitter
+    STATUS = (('TE', 'Temporal'), ('PE', 'Permanent'), ('DI','Discarded'))
+    status = models.CharField(max_length=3, choices=STATUS)
 
     def __unicode__(self):
         return self.url
 
     def preserve(self):
-        self.temporal = False
+        self.status = "PE"
         self.save()
+
+    def discard(self):
+        self.status = "DI"
+        self.save()
+
+    def temporal(self):
+        if self.status == "TE":
+            return True
+        else:
+            return False
 
 
 class AppPost(models.Model):
@@ -264,13 +276,19 @@ class AppPost(models.Model):
     delivered = models.BooleanField(default=True)
     CATEGORIES = (('EN', 'Engagement'), ('PR', 'Promotion'))
     category = models.CharField(max_length=3, choices=CATEGORIES)
-    payload = models.TextField(null=True)
+    payload = models.TextField(null=True, editable=False)
+    answered = models.BooleanField(default=False)
+    recipient_id = models.CharField(max_length=50, null=True, editable=False)
 
     def __unicode__(self):
         if self.url:
             return self.url
         else:
             return self.text
+
+    def do_answer(self):
+        self.answered = True
+        self.save()
 
 
 class MsgQueue(models.Model):
@@ -364,7 +382,8 @@ class MetaChannel():
         if cls.channels[channel_name]:
             cls.channels[channel_name].disconnect()
         else:
-            logger.error("%s channel is unavailable, it cannot disconnect it" % channel_name)
+            logger.error("The object %s channel does not exist. A low-level disconnection was performed" % channel_name)
+            Channel.objects.get(name=channel_name).disconnect()
 
     @classmethod
     def set_initiatives(cls, channel_name, initiative_ids):
@@ -431,9 +450,9 @@ class PostManager():
 
     def _do_manage(self, post, author, parent_post_id=None):
         app_parent_post = None
-
+        author_id = self.channel.get_author_id(post)
         if parent_post_id is None:
-            if self.channel.get_author_id(post) in self.channel.get_account_ids():
+            if author_id in self.channel.get_account_ids():
                 return  # So far, I'm not interested in processing posts authored by the accounts bound to the app
             else:
                 initiative = self.channel.has_initiative_hashtags(post)
@@ -459,49 +478,66 @@ class PostManager():
             return self._process_input(post, challenge, parent_post_id)
         elif parent_post_id is not None:  # It is a reply but not to a challenge post
             if app_parent_post and app_parent_post.category == self.NOTIFICATION_MESSAGE:
-                # Only process replies that were made to app posts categorized as notification (NT)
-                message = self._get_parent_post_message(app_parent_post.text, app_parent_post.campaign)
-                if message:
-                    if message.category == "request_author_extrainfo":
-                        # It is a reply to an extra info request
-                        return self._process_extra_info(post, app_parent_post)
-                    elif message.category == "incorrect_answer":
-                        # It is a reply to a wrong input notification
-                        author = self.channel.get_author(post)
-                        if not author.is_banned():
-                            return self._process_input(post, app_parent_post.challenge, parent_post_id)
+                if not app_parent_post.answered and app_parent_post.recipient_id == author_id:
+                    # Only process replies that were made to app posts categorized as notification (NT)
+                    message = self._get_parent_post_message(app_parent_post.text, app_parent_post.campaign)
+                    if message:
+                        if message.category == "request_author_extrainfo":
+                            # It is a reply to an extra info request
+                            ret = self._process_extra_info(post, app_parent_post)
+                            app_parent_post.do_answer()
+                            return ret
+                        elif message.category == "incorrect_answer":
+                            # It is a reply to a wrong input notification
+                            author = self.channel.get_author(post)
+                            if not author.is_banned():
+                                ret = self._process_input(post, app_parent_post.challenge, parent_post_id)
+                                app_parent_post.do_answer()
+                                return ret
+                            else:
+                                app_parent_post.do_answer()
+                                return None
+                        elif message.category == "ask_change_contribution":
+                            temp_contribution = self._get_contribution_post(app_parent_post)
+                            # It is a reply to a question about changing previous input
+                            answer_terms = message.answer_terms.split()
+                            found_term = False
+                            for answer_term in answer_terms:
+                                if answer_term in self.channel.get_text_post(post).lower():
+                                    found_term = True
+                            if found_term:
+                                ret = self._update_contribution(post, app_parent_post)
+                                app_parent_post.do_answer()
+                                return ret
+                            else:
+                                new_message = app_parent_post.campaign.messages.get(category="not_understandable_change_contribution_reply")
+                                self._send_reply(post, initiative=app_parent_post.initiative, challenge=app_parent_post.challenge,
+                                                 message=new_message)
+                                # If we cannot understand the answer we reply saying that and discard the temporal post
+                                temp_contribution.discard()
+                                app_parent_post.do_answer()
+                                return new_message
+                        elif message.category == "incorrect_author_extrainfo":
+                            # It is a reply to a wrong extra info notification
+                            ret = self._process_extra_info(post, app_parent_post)
+                            app_parent_post.do_answer()
+                            return ret
                         else:
+                            logger.info("Unknown message category. Text: %s" % app_parent_post.text)
+                            app_parent_post.do_answer()
                             return None
-                    elif message.category == "ask_change_contribution":
-                        temp_contribution = self._get_contribution_post(app_parent_post)
-                        # It is a reply to a question about changing previous input
-                        answer_terms = message.answer_terms.split()
-                        found_term = False
-                        for answer_term in answer_terms:
-                            if answer_term in self.channel.get_text_post(post).lower():
-                                found_term = True
-                        if found_term:
-                            return self._update_contribution(post, app_parent_post)
-                        else:
-                            new_message = app_parent_post.campaign.messages.get(category="not_understandable_change_contribution_reply")
-                            self._send_reply(post, initiative=app_parent_post.initiative, challenge=app_parent_post.challenge,
-                                             message=new_message)
-                            # If we cannot understand the answer we reply saying that and delete the temporal post
-                            temp_contribution.delete()
-                            return new_message
-                    elif message.category == "incorrect_author_extrainfo":
-                        # It is a reply to a wrong extra info notification
-                        return self._process_extra_info(post, app_parent_post)
                     else:
-                        logger.info("Unknown message category. Text: %s" % app_parent_post.text)
+                        logger.info("Impossible to determine to which app message this post '%s' belongs to" %
+                                    app_parent_post.text)
+                        app_parent_post.do_answer()
                         return None
                 else:
-                    logger.info("Impossible to determine to which app message this post '%s' belongs to" %
-                                app_parent_post.text)
+                    logger.info("The post received is a reply to an already answered request post or it was sent by an "
+                                "user who is not the original recipient of the request post")
                     return None
             else:
-                logger.error("App parent post does not exist, the post: '%s' will be ignored" %
-                             self.channel.get_text_post(post))
+                logger.error("App parent post does not exist or the category of the app parent post is not "
+                             "'notification'. The post: '%s' will be ignored" % self.channel.get_text_post(post))
                 return None
 
     def _get_parent_post_message(self, text_post, campaign):
@@ -533,13 +569,13 @@ class PostManager():
             if self._get_author_wrong_request_counter(post) > self.settings['limit_wrong_requests']:
                 if self._get_author_wrong_request_counter(post) - self.settings['limit_wrong_requests'] == 1:
                     logger.info("The participant %s has exceed the limit of wrong requests, his/her last contribution "
-                                "will be deleted" % self.channel.get_author(post).name)
+                                "will be discarded" % self.channel.get_author(post).name)
                     # A notification message will be sent only after the first time the limit was exceed
                     message = campaign.messages.get(category="contribution_cannot_save")
                     self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message)
-                    # Delete the "incomplete" contribution
+                    # Discard the "incomplete" contribution
                     contribution_post = self._get_contribution_post(app_parent_post)
-                    contribution_post.delete()
+                    contribution_post.discard()
                     return message
                 else:
                     logger.info("The participant %s has exceed the limit of %s wrong requests, the message will be "
@@ -567,30 +603,21 @@ class PostManager():
         author = self.channel.get_author(post)
         campaign = app_parent_post.campaign
         challenge = app_parent_post.challenge
-        contributions = ContributionPost.objects.filter(challenge=challenge, author=author.id).order_by('-datetime')
-        if len(contributions) < 2:
-            logger.critical("The number of contributions (%s) of the author %s is lower than the required number (2)."
-                            % (len(contributions), author.name))
-            return None
-        else:
-            if len(contributions) > 2:
-                # If there are more than two contributions from where update to the app is in an inconsistent state.
-                # As way of auto-recovering from this state the newest contributions will be deleted, leaving only the
-                # two oldest ones in the database
-                for contribution in contributions[:]:
-                    contribution.delete()
-                    contributions.remove(contribution)
-                    if len(contributions) == 2:
-                        break
-            old_post = contributions[0] if not contributions[0].temporal else contributions[1]
-            new_post = contributions[0] if contributions[0].temporal else contributions[1]
-            new_post.preserve()  # Preserve the newest
+        try:
+            old_post = ContributionPost.objects.get(challenge=challenge, author=author.id, status="PE")  # Permanent
+            new_post = ContributionPost.objects.filter(challenge=challenge, author=author.id, status="TE").\
+                       order_by('-datetime').first()  # Temporal
+            new_post.preserve()  # Preserve the newest (temporal)
             message = campaign.messages.get(category="thanks_change")
             self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message,
                              extra=new_post)
-            old_post.delete()  # Delete the oldest
+            old_post.discard()  # Discard the oldest (permanent)
             author.reset_mistake_flags()
+            self._discard_temporal_post(author, challenge)  # Discard all temporal posts related to 'challenge'
             return message
+        except (ContributionPost.DoesNotExist, ContributionPost.MultipleObjectsReturned) as e:
+            logger.critical("Error when trying to update a previous contribution. %s" % e)
+            return None
 
     def _get_extra_info(self, text, campaign):
         reg_expr = re.compile(campaign.extrainfo.format_answer)
@@ -617,13 +644,13 @@ class PostManager():
                         # Allow changes only if the number of allowed answers is 1
                         if len(existing_posts) > 1:
                             # It should exist only one contribution, but if not and as way of auto-recovering
-                            # from an inconsistent state the newest ones will be deleted, leaving only the oldest one in
+                            # from an inconsistent state the newest ones will be discarded, leaving only the oldest one in
                             # the database
-                            logger.critical("The challenge %s allows only one contribution per participant but the %s "
-                                            "has more than one contribution saved in the db. The newest ones will be "
-                                            "deleted" % (challenge.name, self.channel.get_author(post).name))
+                            logger.critical("The challenge %s allows only one contribution per participant but the author "
+                                            "%s has more than one contribution saved in the db. The newest ones will be "
+                                            "discarded" % (challenge.name, self.channel.get_author(post).name))
                             for e_post in existing_posts[:]:
-                                e_post.delete()
+                                e_post.discard()
                                 existing_posts.remove(e_post)
                                 if len(existing_posts) == 1:
                                     break
@@ -722,7 +749,7 @@ class PostManager():
     def _has_already_posted(self, post, challenge):
         author = self.channel.get_author(post)
         try:
-            return ContributionPost.objects.filter(challenge=challenge, author=author.id, temporal=False).order_by('-datetime')
+            return ContributionPost.objects.filter(challenge=challenge, author=author.id, status='PE').order_by('-datetime')
         except ContributionPost.DoesNotExist:
             return None
 
@@ -730,6 +757,10 @@ class PostManager():
         post_curated_info = self.channel.get_info_post(post)
         campaign = challenge.campaign
         initiative = campaign.initiative
+        if temporal:
+            status = 'TE'
+        else:
+            status = 'PE'
         post_to_save = ContributionPost(id_in_channel=post_curated_info['id'],
                                         datetime=timezone.make_aware(post_curated_info['datetime'],
                                                                      timezone.get_default_timezone()),
@@ -738,16 +769,18 @@ class PostManager():
                                         in_reply_to=parent_post_id, initiative=initiative,
                                         campaign=campaign, challenge=challenge, channel=post_curated_info['channel'],
                                         votes=post_curated_info['votes'], re_posts=post_curated_info['re_posts'],
-                                        bookmarks=post_curated_info['bookmarks'], temporal=temporal)
+                                        bookmarks=post_curated_info['bookmarks'], status=status)
         post_to_save.save(force_insert=True)
         if not temporal:
-            self._delete_temporal_post(post_curated_info['author'], challenge)
+            self._discard_temporal_post(post_curated_info['author'], challenge)
         return post_to_save
 
-    # Delete any temporal post existing within 'challenge' and posted by 'author'
-    def _delete_temporal_post(self, author, challenge):
+    # Discard any temporal post existing within 'challenge' and posted by 'author'
+    def _discard_temporal_post(self, author, challenge):
         try:
-            ContributionPost.objects.filter(challenge=challenge, author=author.id, temporal=True).delete()
+            temp_posts = ContributionPost.objects.filter(challenge=challenge, author=author.id, status='TE')
+            for post in temp_posts:
+                post.discard()
             return True
         except ContributionPost.DoesNotExist:
             return False
@@ -779,6 +812,7 @@ class PostManager():
     def _send_reply(self, post, initiative, challenge, message, extra=None):
         msg = None
         author_username = self.channel.get_author_username(post)
+        author_id = self.channel.get_author_id(post)
         current_datetime = time.strftime(self.settings['datetime_format'])
         type_msg = ""
         post_id = self.channel.get_id_post(post)
@@ -821,8 +855,8 @@ class PostManager():
             type_msg = "NT"
         if msg is not None:
             payload = {'parent_post_id': self.channel.get_parent_post_id(post), 'type_msg': type_msg,
-                       'post_id': post_id, 'initiative_id': initiative.id, 'author': author_username,
-                       'campaign_id': challenge.campaign.id, 'challenge_id': challenge.id,
+                       'post_id': post_id, 'initiative_id': initiative.id, 'author_username': author_username,
+                       'author_id': author_id, 'campaign_id': challenge.campaign.id, 'challenge_id': challenge.id,
                        'initiative_short_url': short_url}
             payload_json = json.dumps(payload)
             self.channel.send_message(message=msg, type_msg="RE", recipient_id=post_id, payload=payload_json)
@@ -1021,7 +1055,7 @@ class SocialNetwork():
                     elif msg_to_dispatch.type == "RE":  # Reply
                         res = self._reply_to(msg_to_dispatch.message_text, msg_to_dispatch.recipient_id, payload_hash)
                     else:  # Direct message
-                        res = self._send_direct_message(msg_to_dispatch.message_text, payload_hash['author'], payload_hash)
+                        res = self._send_direct_message(msg_to_dispatch.message_text, payload_hash['author_username'], payload_hash)
                     if res['delivered']:
                         msg_to_dispatch.delete()
                     else:
@@ -1041,6 +1075,7 @@ class SocialNetwork():
         initiative = Initiative.objects.get(pk=payload['initiative_id'])
         campaign = Campaign.objects.get(pk=payload['campaign_id'])
         challenge = Challenge.objects.get(pk=payload['challenge_id'])
+        recipient_id = payload['author_id']
         if parent_post_id is not None:
             app_parent_post = AppPost.objects.get(id_in_channel=parent_post_id)
         else:
@@ -1054,7 +1089,7 @@ class SocialNetwork():
                            app_parent_post=app_parent_post, initiative=initiative, campaign=campaign,
                            contribution_parent_post=contribution_parent_post, challenge=challenge,
                            channel=channel.get_channel_obj(), votes=0, re_posts=0, bookmarks=0, delivered=True,
-                           category=type_msg, payload=initiative_short_url)
+                           category=type_msg, payload=initiative_short_url, recipient_id=recipient_id, answered=False)
         app_post.save(force_insert=True)
         if app_post.id is None:
             if channel.delete_post(response) is not None:
@@ -1104,9 +1139,10 @@ class Twitter(SocialNetwork):
             logger.info("The post '%s' has been published through Twitter" % message)
             self.save_post_db(payload, response, self)
             return {'delivered': True, 'response': response}
-        except tweepy.TweepError, e:
-            logger.error("The post couldn't be delivered. Reason: %s" % e.reason[0]['message'])
-            return {'delivered': False, 'response': e.reason}
+        except tweepy.TweepError as e:
+            reason = ast.literal_eval(e.reason)
+            logger.error("The post couldn't be delivered. Reason: %s" % reason[0]['message'])
+            return {'delivered': False, 'response': reason}
 
     def _send_direct_message(self, message, author_username, payload):
         try:
@@ -1114,19 +1150,21 @@ class Twitter(SocialNetwork):
             logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_username))
             self.save_post_db(payload, response, self)
             return {'delivered': True, 'response': response}
-        except tweepy.TweepError, e:
-            logger.error("The post couldn't be delivered. %s" % e.reason[0]['message'])
-            return {'delivered': False, 'response': e.reason}
+        except tweepy.TweepError as e:
+            reason = ast.literal_eval(e.reason)
+            logger.error("The post couldn't be delivered. Reason: %s" % reason[0]['message'])
+            return {'delivered': False, 'response': reason}
 
     def _reply_to(self, message, id_post, payload):
         try:
             response = self.api.update_status(status=message, in_reply_to_status_id=id_post)
-            logger.info("The post '%s' has been sent to %s through Twitter" % (message, payload['author']))
+            logger.info("The post '%s' has been sent to %s through Twitter" % (message, payload['author_username']))
             self.save_post_db(payload, response, self)
             return {'delivered': True, 'response': response}
-        except tweepy.TweepError, e:
-            logger.error("The post couldn't be delivered. %s" % e.reason[0]['message'])
-            return {'delivered': False, 'response': e.reason}
+        except tweepy.TweepError as e:
+            reason = ast.literal_eval(e.reason)
+            logger.error("The post couldn't be delivered. Reason: %s" % reason[0]['message'])
+            return {'delivered': False, 'response': reason}
 
     def get_post(self, id_post):
         return self.api.get_status(id_post)
