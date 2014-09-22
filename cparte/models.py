@@ -527,7 +527,7 @@ class PostManager():
                             app_parent_post.do_answer()
                             return None
                     else:
-                        logger.info("Impossible to determine to which app message this post '%s' belongs to" %
+                        logger.info("Cannot determine to which app message this post '%s' belongs to" %
                                     app_parent_post.text)
                         app_parent_post.do_answer()
                         return None
