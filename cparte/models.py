@@ -613,7 +613,7 @@ class PostManager():
                              extra=new_post)
             old_post.discard()  # Discard the oldest (permanent)
             author.reset_mistake_flags()
-            self._discard_temporal_post(author, challenge)  # Discard all temporal posts related to 'challenge'
+            self._discard_temporal_post(author, challenge)  # Discard the remaining temporal posts related to 'challenge'
             return message
         except (ContributionPost.DoesNotExist, ContributionPost.MultipleObjectsReturned) as e:
             logger.critical("Error when trying to update a previous contribution. %s" % e)
