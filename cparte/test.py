@@ -43,7 +43,9 @@ class TwitterTestCase(TestCase):
                 {'id': "513141063591010304", 'type': 'incorrect_post_existing_user_new_challenge2', 'status': ''},
                 {'id': "513142210712182785", 'type': 'correct_post_existing_user_incorrect_answer_notification', 'status': ''},
                 {'id': "513144257759023104", 'type': 'correct_post_existing_user_answered_challenge2', 'status': ''},
-                {'id': "513145533175590914", 'type': 'incorrect_answer_change_previos_contribution_request', 'status': ''}]
+                {'id': "513145533175590914", 'type': 'incorrect_answer_change_previous_contribution_request', 'status': ''},
+                {'id': "514158653331345409", 'type': 'correct_post_existing_user_answered_challenge3', 'status': ''},
+                {'id': "514159144777940993", 'type': 'correct_answer_change_previous_contribution_request', 'status': ''}]
 
     def get_id_testing_tweets(self):
         tweet_ids = []
@@ -218,16 +220,16 @@ class TestAppBehavior(TwitterTestCase):
             if testing_post['type'] == "incorrect_extra_info":
                 incorrect_extra_info = testing_post['status']
         output = self.manager.manage_post(correct_post)
-        self.assertNotEqual(output.category, None)
+        self.assertNotEqual(output, None)
         self.assertEqual(output.category, "request_author_extrainfo")
         mistake_counter = 0
         while mistake_counter < self.limit_incorrect_requests:
             output = self.manager.manage_post(incorrect_extra_info)
-            self.assertNotEqual(output.category, None)
+            self.assertNotEqual(output, None)
             self.assertEqual(output.category, "incorrect_author_extrainfo")
             mistake_counter += 1
         output = self.manager.manage_post(incorrect_extra_info)
-        self.assertNotEqual(output.category, None)
+        self.assertNotEqual(output, None)
         self.assertEqual(output.category, "contribution_cannot_save")
 
     def test_manage_post_new_user_reply_correctly_to_extra_info_request(self):
@@ -258,10 +260,10 @@ class TestAppBehavior(TwitterTestCase):
             if testing_post['type'] == "correct_post_existing_user_incorrect_answer_notification":
                 correct_post = testing_post['status']
         output = self.manager.manage_post(incorrect_post)
-        self.assertNotEqual(output.category, None)
+        self.assertNotEqual(output, None)
         self.assertEqual(output.category, "incorrect_answer")
         output = self.manager.manage_post(correct_post)
-        self.assertNotEqual(output.category, None)
+        self.assertNotEqual(output, None)
         self.assertEqual(output.category, "thanks_contribution")
 
     def test_manage_post_existing_user_reply_wrongly_to_change_previous_contribution(self):
@@ -272,19 +274,31 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_existing_user_answered_challenge2":
                 correct_post_answered_challenge = testing_post['status']
-            if testing_post['type'] == "incorrect_answer_change_previos_contribution_request":
+            if testing_post['type'] == "incorrect_answer_change_previous_contribution_request":
                 incorrect_answer_change_previous_contribution = testing_post['status']
         output = self.manager.manage_post(correct_post_answered_challenge)
-        self.assertNotEqual(output.category, None)
+        self.assertNotEqual(output, None)
         self.assertEqual(output.category, "ask_change_contribution")
         output = self.manager.manage_post(incorrect_answer_change_previous_contribution)
-        self.assertNotEqual(output.category, None)
+        self.assertNotEqual(output, None)
         self.assertEqual(output.category, "not_understandable_change_contribution_reply")
 
     def test_manage_post_existing_user_reply_correctly_to_change_previous_contribution(self):
         # Input: reply from an existing author to a request about changing his/her previous contribution
         # Output: a message thanking the change
-        pass
+        correct_post_answered_challenge = None
+        correct_answer = None
+        for testing_post in self.testing_posts:
+            if testing_post['type'] == "correct_post_existing_user_answered_challenge3":
+                correct_post_answered_challenge = testing_post['status']
+            if testing_post['type'] == "correct_answer_change_previous_contribution_request":
+                correct_answer = testing_post['status']
+        output = self.manager.manage_post(correct_post_answered_challenge)
+        self.assertNotEqual(output.category, None)
+        self.assertEqual(output.category, "ask_change_contribution")
+        output = self.manager.manage_post(correct_answer)
+        self.assertNotEqual(output.category, None)
+        self.assertEqual(output.category, "thanks_change")
 
     """
     Additional, more complex, Test Scenarios
