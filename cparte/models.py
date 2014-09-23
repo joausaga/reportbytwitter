@@ -453,7 +453,7 @@ class PostManager():
         author_id = self.channel.get_author_id(post)
         if parent_post_id is None:
             if author_id in self.channel.get_account_ids():
-                return  # So far, I'm not interested in processing posts authored by the accounts bound to the app
+                return None # So far, I'm not interested in processing posts authored by the accounts bound to the app
             else:
                 initiative = self.channel.has_initiative_hashtags(post)
                 within_initiative = True if initiative else False
@@ -468,7 +468,7 @@ class PostManager():
                                     app_parent_post.app_parent_post is None
                 challenge = app_parent_post.challenge if within_initiative else None
             except AppPost.DoesNotExist:
-                return  # I'm not interested in processing replies that were not posted to the app posts
+                return None # I'm not interested in processing replies that were not posted to the app posts
 
         if within_initiative and challenge:
             if author is None:
@@ -643,8 +643,8 @@ class PostManager():
                     if challenge.answers_from_same_author == 1:
                         # Allow changes only if the number of allowed answers is 1
                         if len(existing_posts) > 1:
-                            # It should exist only one contribution, but if not and as way of auto-recovering
-                            # from an inconsistent state the newest ones will be discarded, leaving only the oldest one in
+                            # It should exist only one contribution, but if not and as way of auto-recovering from an
+                            # inconsistent state the newest ones will be discarded, leaving only the oldest one in
                             # the database
                             logger.critical("The challenge %s allows only one contribution per participant but the author "
                                             "%s has more than one contribution saved in the db. The newest ones will be "
