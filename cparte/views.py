@@ -2,7 +2,7 @@
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 
-from cparte.models import MetaChannel, Channel, ContributionPost
+from cparte.models import MetaChannel, ContributionPost
 
 import logging
 
