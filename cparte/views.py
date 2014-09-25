@@ -1,8 +1,7 @@
-#from multiprocessing import Process
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 
-from cparte.models import MetaChannel, Channel, ContributionPost
+from cparte.models import MetaChannel, ContributionPost
 
 import logging
 
@@ -11,8 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 def index(request):
-    #p = Process(target=count_and_print)
-    #p.start()
     return HttpResponse("Welcome to the CParte application!")
 
 
