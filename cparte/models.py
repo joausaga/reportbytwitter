@@ -1,8 +1,10 @@
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+from django.db import connection
 from threading import Thread
 from apiclient.discovery import build
+from multiprocessing import Process
 import tweepy
 import abc
 import re
@@ -383,7 +385,7 @@ class MetaChannel():
             cls.channels[channel_name].disconnect()
         else:
             logger.error("The object %s channel does not exist. A low-level disconnection was performed" % channel_name)
-            Channel.objects.get(name=channel_name).disconnect()
+            Channel.objects.get(name=channel_name).off()
 
     @classmethod
     def set_initiatives(cls, channel_name, initiative_ids):
@@ -1107,6 +1109,8 @@ class Twitter(SocialNetwork):
     api = None
     channel = None
     stream = None
+    p_messenger = None
+    p_listener = None
 
     def __init__(self):
         self.channel = Channel.objects.get(name="twitter")
@@ -1120,12 +1124,18 @@ class Twitter(SocialNetwork):
         manager = PostManager(self)
         listener = TwitterListener(manager)
         self.stream = tweepy.Stream(self.auth_handler, listener)
-        self.stream.filter(follow=self.accounts, track=self.hashtags, async=True)
+        # Spawn off a process that listens Twitter's firehose
+        self.p_listener = Process(target=self.stream.filter, args=[self.accounts, self.hashtags])
+        connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
+        self.p_listener.start()
+        #self.stream.filter(follow=self.accounts, track=self.hashtags, async=True)
         self.channel.on()
         logger.info("Starting to listen Twitter Stream")
         self.msg_dispatcher_active = True
-        thread_dispatcher = Thread(target=self.run_msg_dispatcher)
-        thread_dispatcher.start()
+        # Spawn off a process that manages the queue of messages to send
+        connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
+        self.p_messenger = Process(target=self.run_msg_dispatcher)
+        self.p_messenger.start()
         logger.info("Message Dispatcher on")
 
     def send_message(self, message, type_msg, recipient_id=None, payload=None):
@@ -1245,12 +1255,14 @@ class Twitter(SocialNetwork):
 
     def disconnect(self):
         self.msg_dispatcher_active = False
+        self.channel.off()
         if self.stream is not None:
             self.stream.disconnect()
-            self.channel.off()
             logger.info("Twitter channel has been disconnected")
         else:
             logger.debug("Twitter channel is already disconnected")
+        self.p_messenger.terminate()
+        self.p_listener.terminate()
 
     def get_account_ids(self):
         return self.accounts
