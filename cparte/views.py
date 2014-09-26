@@ -33,7 +33,7 @@ def listen(request, channel_name):
         request.session['meta_channel'] = pickle.dumps(meta_channel)
     else:
         logger.error("The channel is not enabled")
-    if settings.URL_PREFIX:
+    if hasattr(settings, 'URL_PREFIX') and settings.URL_PREFIX:
         redirect_url = "%s/admin/cparte/channel/" % settings.URL_PREFIX
     else:
         redirect_url = "/admin/cparte/channel/"
@@ -45,7 +45,7 @@ def hangup(request, channel_name):
     meta_channel = pickle.loads(str_meta_channel)
     meta_channel.disconnect(channel_name)
     request.session['meta_channel'] = pickle.dumps(meta_channel)
-    if settings.URL_PREFIX:
+    if hasattr(settings, 'URL_PREFIX') and settings.URL_PREFIX:
         redirect_url = "%s/admin/cparte/channel/" % settings.URL_PREFIX
     else:
         redirect_url = "/admin/cparte/channel/"

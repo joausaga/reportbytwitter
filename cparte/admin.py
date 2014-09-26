@@ -155,20 +155,20 @@ class ChannelAdmin(admin.ModelAdmin):
         return qs
 
     def row_actions(self, obj):
-        if settings.URL_PREFIX:
-            listen_url_href = "%s/cparte/listen/{0}" % settings.URL_PREFIX
-            hangup_url_href = "%s/cparte/hangup/{0}" % settings.URL_PREFIX
+        if hasattr(settings, 'URL_PREFIX') and settings.URL_PREFIX:
+            listen_url_href = """{0}/cparte/listen/{1}""".format(settings.URL_PREFIX, obj.name)
+            hangup_url_href = """{0}/cparte/hangup/{1}""".format(settings.URL_PREFIX, obj.name)
         else:
-            listen_url_href = "/cparte/listen/{0}"
-            hangup_url_href = "/cparte/hangup/{0}"
+            listen_url_href = """/cparte/listen/{0}""".format(obj.name)
+            hangup_url_href = """/cparte/hangup/{0}""".format(obj.name)
         if obj.status:
-            return """<a href=""" + listen_url_href + """ class="btn btn-success btn-xs disabled">On</a> |
-                      <a href=""" + hangup_url_href + """ class="btn btn-danger btn-xs">Off</a>""" \
-                      .format(obj.name)
+            return """<a href={0} class="btn btn-success btn-xs disabled">On</a> |
+                      <a href={1} class="btn btn-danger btn-xs">Off</a>""" \
+                      .format(listen_url_href, hangup_url_href)
         else:
-            return """<a href=""" + listen_url_href + """ class="btn btn-success btn-xs">On</a> |
-                      <a href=""" + hangup_url_href + """ class="btn btn-danger btn-xs disabled">Off</a>""" \
-                      .format(obj.name)
+            return """<a href={0} class="btn btn-success btn-xs">On</a> |
+                      <a href={1} class="btn btn-danger btn-xs disabled">Off</a>""" \
+                      .format(listen_url_href, hangup_url_href)
     row_actions.short_description = 'Actions'
     row_actions.allow_tags = True
 

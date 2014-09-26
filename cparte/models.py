@@ -993,9 +993,11 @@ class SocialNetwork():
     def disconnect(self):
         # Kill process that manages the message queue
         os.kill(self.pid_messenger, signal.SIGKILL)
+        logger.info("Messenger has been stopped")
         # Kill the process that listens the firehose of Twitter
         os.kill(self.pid_listener, signal.SIGKILL)
-        # Flag that the channel is off
+        logger.info("Listener has been stopped")
+        # Flag that the channel is off-line
         self.channel.off()
         self.pid_messenger = None
         self.pid_listener = None
