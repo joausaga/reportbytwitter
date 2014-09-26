@@ -2,7 +2,6 @@ from django.db import models
 from django.utils import timezone
 from django.conf import settings
 from django.db import connection
-from threading import Thread
 from apiclient.discovery import build
 from multiprocessing import Process
 import tweepy
@@ -12,6 +11,8 @@ import time
 import logging
 import json
 import ast
+import os
+import signal
 
 logger = logging.getLogger(__name__)
 
@@ -311,95 +312,94 @@ class MsgQueue(models.Model):
 
 
 class MetaChannel():
-    channels = {'twitter': None, 'facebook': None, 'google_plus': None, 'instagram': None}
 
-    @classmethod
-    def authenticate(cls, channel_name):
+    channels = None
+
+    def __init__(self, channel_names):
+        self.channels = {}
+        for channel_name in channel_names:
+            self.channels[channel_name] = None
+
+    def authenticate(self, channel_name):
         channel_name = channel_name.lower()
         if channel_name == "twitter":
-            cls.channels[channel_name] = Twitter()
+            self.channels[channel_name] = Twitter()
         else:
             logger.error("Unknown channel: %s" % channel_name)
             return
-        cls.channels[channel_name].authenticate()
+        self.channels[channel_name].authenticate()
 
-    @classmethod
-    def broadcast(cls, message):
-        for name in cls.channels.iterkeys():
-            if cls.channels[name]:
-                cls.channels[name].send_message(message=message, type_msg="PU")
+    def channel_enabled(self, channel_name):
+        channel_name = channel_name.lower()
+        return self.channels.has_key(channel_name)
 
-    @classmethod
-    def post_public(cls, channels, message):
+    def broadcast(self, message):
+        for name in self.channels.iterkeys():
+            if self.channels[name]:
+                self.channels[name].queue_message(message=message, type_msg="PU")
+
+    def post_public(self, channels, message):
         for channel in channels:
             channel = channel.lower()
-            if cls.channels[channel]:
-                cls.channels[channel].send_message(message=message, type_msg="PU")
+            if self.channels[channel]:
+                self.channels[channel].queue_message(message=message, type_msg="PU")
             else:
                 logger.error("%s channel is unavailable, it cannot post into it" % channel)
 
-    @classmethod
-    def send_direct_message(cls, channel_name, recipient, message):
+    def send_direct_message(self, channel_name, recipient, message):
         channel_name = channel_name.lower()
-        if cls.channels[channel_name]:
-            cls.channels[channel_name].send_message(message=message, type_msg="DM", payload={'author':recipient})
+        if self.channels[channel_name]:
+            self.channels[channel_name].queue_message(message=message, type_msg="DM", payload={'author':recipient})
         else:
             logger.error("%s channel is unavailable, it cannot send direct message through it" % channel_name)
 
-    @classmethod
-    def reply_to(cls, channel_name, id_message, message):
+    def reply_to(self, channel_name, id_message, message):
         channel_name = channel_name.lower()
-        if cls.channels[channel_name]:
-            cls.channels[channel_name].send_message(message=message, type_msg="RE", recipient_id=id_message)
+        if self.channels[channel_name]:
+            self.channels[channel_name].queue_message(message=message, type_msg="RE", recipient_id=id_message)
         else:
             logger.error("%s channel is unavailable, it cannot post to a user through it" % channel_name)
 
-    @classmethod
-    def get_post(cls, channel_name, id_post):
+    def get_post(self, channel_name, id_post):
         channel_name = channel_name.lower()
-        if cls.channels[channel_name]:
-            cls.channels[channel_name].get_post(id_post)
+        if self.channels[channel_name]:
+            self.channels[channel_name].get_post(id_post)
         else:
             logger.error("%s channel is unavailable, it cannot get a post" % channel_name)
 
-    @classmethod
-    def get_info_user(cls, channel_name, id_user):
+    def get_info_user(self, channel_name, id_user):
         channel_name = channel_name.lower()
-        if cls.channels[channel_name]:
-            cls.channels[channel_name].get_info_user(id_user)
+        if self.channels[channel_name]:
+            self.channels[channel_name].get_info_user(id_user)
         else:
             logger.error("%s channel is unavailable, it cannot get info about a user" % channel_name)
 
-    @classmethod
-    def listen(cls, channel_name):
+    def listen(self, channel_name):
         channel_name = channel_name.lower()
-        if cls.channels[channel_name.lower()]:
-            cls.channels[channel_name].listen()
+        if self.channels[channel_name]:
+            self.channels[channel_name].listen()
         else:
             logger.error("%s channel is unavailable, it cannot be listened" % channel_name)
 
-    @classmethod
-    def disconnect(cls, channel_name):
+    def disconnect(self, channel_name):
         channel_name = channel_name.lower()
-        if cls.channels[channel_name]:
-            cls.channels[channel_name].disconnect()
+        if self.channels[channel_name]:
+            self.channels[channel_name].disconnect()
         else:
             logger.error("The object %s channel does not exist. A low-level disconnection was performed" % channel_name)
             Channel.objects.get(name=channel_name).off()
 
-    @classmethod
-    def set_initiatives(cls, channel_name, initiative_ids):
+    def set_initiatives(self, channel_name, initiative_ids):
         channel_name = channel_name.lower()
-        if cls.channels[channel_name]:
-            cls.channels[channel_name].set_initiatives(initiative_ids)
+        if self.channels[channel_name]:
+            self.channels[channel_name].set_initiatives(initiative_ids)
         else:
             logger.error("%s channel is unavailable, initiatives cannot be set" % channel_name)
 
-    @classmethod
-    def set_accounts(cls, channel_name, account_ids):
+    def set_accounts(self, channel_name, account_ids):
         channel_name = channel_name.lower()
-        if cls.channels[channel_name]:
-            cls.channels[channel_name].set_accounts(account_ids)
+        if self.channels[channel_name]:
+            self.channels[channel_name].set_accounts(account_ids)
         else:
             logger.error("%s channel is unavailable, accounts cannot be set" % channel_name)
 
@@ -861,7 +861,7 @@ class PostManager():
                        'author_id': author_id, 'campaign_id': challenge.campaign.id, 'challenge_id': challenge.id,
                        'initiative_short_url': short_url}
             payload_json = json.dumps(payload)
-            self.channel.send_message(message=msg, type_msg="RE", recipient_id=post_id, payload=payload_json)
+            self.channel.queue_message(message=msg, type_msg="RE", recipient_id=post_id, payload=payload_json)
 
     def _do_short_initiative_url(self, long_url):
         try:
@@ -886,54 +886,18 @@ class SocialNetwork():
     accounts = None
     hashtags = None
     msg_duplicate_code = 187
-    msg_dispatcher_active = False
+    channel = None
+    pid_messenger = None
+    pid_listener = None
 
     @abc.abstractmethod
     def authenticate(self):
         """Authenticate into the channel"""
         raise NotImplementedError
 
-    def set_initiatives(self, initiative_ids):
-        for id_initiative in initiative_ids:
-            try:
-                initiative = Initiative.objects.get(pk=id_initiative)
-            except Initiative.DoesNotExist:
-                e_msg = "Does not exist an initiative identified with the id %s" % id_initiative
-                logger.critical(e_msg)
-                raise Exception(e_msg)
-
-            if self.initiatives:
-                self.initiatives.append(initiative)
-                self.hashtags.append(initiative.hashtag)
-            else:
-                self.initiatives = [initiative]
-                self.hashtags = [initiative.hashtag]
-            # Add to the array of hashtags the hashtags of the initiative's campaigns
-            for campaign in initiative.campaign_set.all():
-                if campaign.hashtag is not None:
-                    self.hashtags.append(campaign.hashtag)
-                # Add to the array of hashtags the hashtags of the campaign's challenges
-                for challenge in campaign.challenge_set.all():
-                    self.hashtags.append(challenge.hashtag)
-
-    def set_accounts(self, account_ids):
-        self.accounts = []
-        for id_account in account_ids:
-            try:
-                self.accounts.append(Account.objects.get(pk=id_account).id_in_channel)
-            except Account.DoesNotExist:
-                e_msg = "Does not exist an account identified with the id %s" % id_account
-                logger.critical(e_msg)
-                raise Exception(e_msg)
-
     @abc.abstractmethod
     def listen(self):
         """Listen the channel"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def send_message(self, message, type_msg, recipient_id, payload):
-        """Save app post in the database"""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -1026,48 +990,82 @@ class SocialNetwork():
         """Return information about the challenge"""
         raise NotImplementedError
 
-    @abc.abstractmethod
     def disconnect(self):
-        """Disconnect the established connection"""
-        raise NotImplementedError
+        # Kill process that manages the message queue
+        os.kill(self.pid_messenger, signal.SIGKILL)
+        # Kill the process that listens the firehose of Twitter
+        os.kill(self.pid_listener, signal.SIGKILL)
+        # Flag that the channel is off
+        self.channel.off()
+        self.pid_messenger = None
+        self.pid_listener = None
 
-    @abc.abstractmethod
+    def set_initiatives(self, initiative_ids):
+        for id_initiative in initiative_ids:
+            try:
+                initiative = Initiative.objects.get(pk=id_initiative)
+            except Initiative.DoesNotExist:
+                e_msg = "Does not exist an initiative identified with the id %s" % id_initiative
+                logger.critical(e_msg)
+                raise Exception(e_msg)
+
+            if self.initiatives:
+                self.initiatives.append(initiative)
+                self.hashtags.append(initiative.hashtag)
+            else:
+                self.initiatives = [initiative]
+                self.hashtags = [initiative.hashtag]
+            # Add to the array of hashtags the hashtags of the initiative's campaigns
+            for campaign in initiative.campaign_set.all():
+                if campaign.hashtag is not None:
+                    self.hashtags.append(campaign.hashtag)
+                # Add to the array of hashtags the hashtags of the campaign's challenges
+                for challenge in campaign.challenge_set.all():
+                    self.hashtags.append(challenge.hashtag)
+
+    def set_accounts(self, account_ids):
+        self.accounts = []
+        for id_account in account_ids:
+            try:
+                self.accounts.append(Account.objects.get(pk=id_account).id_in_channel)
+            except Account.DoesNotExist:
+                e_msg = "Does not exist an account identified with the id %s" % id_account
+                logger.critical(e_msg)
+                raise Exception(e_msg)
+
     def get_account_ids(self):
-        """Return the ids of the accounts that are bound to the application"""
-        raise NotImplementedError
+        return self.accounts
 
-    @abc.abstractmethod
     def get_channel_obj(self):
-        """Return the model object associated to the channel"""
-        raise NotImplementedError
+        return self.channel
 
-    @abc.abstractmethod
     def get_name(self):
-        """Return the name of the channel"""
-        raise NotImplementedError
+        return self.channel.name
 
     def run_msg_dispatcher(self):
-        while self.msg_dispatcher_active:
+        while True:
             if MsgQueue.objects.exists():
-                try:
-                    msg_to_dispatch = MsgQueue.objects.earliest('timestamp')
-                    payload_hash = json.loads(msg_to_dispatch.payload)
-                    if msg_to_dispatch.type == "PU":  # Public Posts
-                        res = self._post_public(msg_to_dispatch.message_text, payload_hash)
-                    elif msg_to_dispatch.type == "RE":  # Reply
-                        res = self._reply_to(msg_to_dispatch.message_text, msg_to_dispatch.recipient_id, payload_hash)
-                    else:  # Direct message
-                        res = self._send_direct_message(msg_to_dispatch.message_text, payload_hash['author_username'], payload_hash)
-                    if res['delivered']:
+                msg_to_dispatch = MsgQueue.objects.earliest('timestamp')
+                payload_hash = json.loads(msg_to_dispatch.payload)
+                if msg_to_dispatch.type == "PU":  # Public Posts
+                    res = self._post_public(msg_to_dispatch.message_text, payload_hash)
+                elif msg_to_dispatch.type == "RE":  # Reply
+                    res = self._reply_to(msg_to_dispatch.message_text, msg_to_dispatch.recipient_id, payload_hash)
+                else:  # Direct message
+                    res = self._send_direct_message(msg_to_dispatch.message_text, payload_hash['author_username'], payload_hash)
+                if res['delivered']:
+                    msg_to_dispatch.delete()
+                else:
+                    if res['response'][0]['code'] == self.msg_duplicate_code:
                         msg_to_dispatch.delete()
-                    else:
-                        if res['response'][0]['code'] == self.msg_duplicate_code:
-                            msg_to_dispatch.delete()
-                        # Need to add actions for other errors, so far only duplicate messages are considered
-                except MsgQueue.DoesNotExist:
-                    pass
+                    # Need to add actions for other errors, so far only duplicate messages are considered
             else:
                 time.sleep(10)  # Wait some time
+
+    def queue_message(self, message, type_msg, recipient_id=None, payload=None):
+        msg_queue = MsgQueue(message_text=message, recipient_id=recipient_id, type=type_msg, channel=self.channel,
+                             payload=payload)
+        msg_queue.save(force_insert=True)
 
     def save_post_db(self, payload, response, channel):
         parent_post_id = payload['parent_post_id']
@@ -1106,11 +1104,6 @@ class SocialNetwork():
 
 class Twitter(SocialNetwork):
     auth_handler = None
-    api = None
-    channel = None
-    stream = None
-    p_messenger = None
-    p_listener = None
 
     def __init__(self):
         self.channel = Channel.objects.get(name="twitter")
@@ -1118,34 +1111,29 @@ class Twitter(SocialNetwork):
     def authenticate(self):
         self.auth_handler = tweepy.OAuthHandler(settings.TWITTER_CONSUMER_KEY, settings.TWITTER_CONSUMER_SECRET)
         self.auth_handler.set_access_token(settings.TWITTER_ACCESS_TOKEN, settings.TWITTER_ACCESS_TOKEN_SECRET)
-        self.api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
     def listen(self):
         manager = PostManager(self)
         listener = TwitterListener(manager)
-        self.stream = tweepy.Stream(self.auth_handler, listener)
+        stream = tweepy.Stream(self.auth_handler, listener)
         # Spawn off a process that listens Twitter's firehose
-        self.p_listener = Process(target=self.stream.filter, args=[self.accounts, self.hashtags])
+        proc_listener = Process(target=stream.filter, args=[self.accounts, self.hashtags])
         connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
-        self.p_listener.start()
-        #self.stream.filter(follow=self.accounts, track=self.hashtags, async=True)
-        self.channel.on()
+        proc_listener.start()
+        self.pid_listener = proc_listener.pid
         logger.info("Starting to listen Twitter Stream")
-        self.msg_dispatcher_active = True
         # Spawn off a process that manages the queue of messages to send
+        proc_messenger = Process(target=self.run_msg_dispatcher)
         connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
-        self.p_messenger = Process(target=self.run_msg_dispatcher)
-        self.p_messenger.start()
+        proc_messenger.start()
+        self.pid_messenger = proc_messenger.pid
         logger.info("Message Dispatcher on")
-
-    def send_message(self, message, type_msg, recipient_id=None, payload=None):
-        msg_queue = MsgQueue(message_text=message, recipient_id=recipient_id, type=type_msg, channel=self.channel,
-                             payload=payload)
-        msg_queue.save(force_insert=True)
+        self.channel.on()
 
     def _post_public(self, message, payload):
+        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
-            response = self.api.update_status(status=message)
+            response = api.update_status(status=message)
             logger.info("The post '%s' has been published through Twitter" % message)
             self.save_post_db(payload, response, self)
             return {'delivered': True, 'response': response}
@@ -1155,8 +1143,9 @@ class Twitter(SocialNetwork):
             return {'delivered': False, 'response': reason}
 
     def _send_direct_message(self, message, author_username, payload):
+        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
-            response = self.api.send_direct_message(screen_name=author_username, text=message)
+            response = api.send_direct_message(screen_name=author_username, text=message)
             logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_username))
             self.save_post_db(payload, response, self)
             return {'delivered': True, 'response': response}
@@ -1166,8 +1155,9 @@ class Twitter(SocialNetwork):
             return {'delivered': False, 'response': reason}
 
     def _reply_to(self, message, id_post, payload):
+        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
-            response = self.api.update_status(status=message, in_reply_to_status_id=id_post)
+            response = api.update_status(status=message, in_reply_to_status_id=id_post)
             logger.info("The post '%s' has been sent to %s through Twitter" % (message, payload['author_username']))
             self.save_post_db(payload, response, self)
             return {'delivered': True, 'response': response}
@@ -1177,16 +1167,19 @@ class Twitter(SocialNetwork):
             return {'delivered': False, 'response': reason}
 
     def get_post(self, id_post):
-        return self.api.get_status(id_post)
+        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+        return api.get_status(id_post)
 
     def delete_post(self, post):
+        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
-            return self.api.destroy_status(post.id_str)
+            return api.destroy_status(post.id_str)
         except tweepy.TweepError, e:
             logger.error("The post %s couldn't be destroyed. %s" % (post.id_str, e.reason))
 
     def get_info_user(self, id_user):
-        return self.api.get_user(id_user)
+        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+        return api.get_user(id_user)
 
     def get_type_post(self, post):
         if post.in_reply_to_status_id_str is None:
@@ -1252,26 +1245,6 @@ class Twitter(SocialNetwork):
                     if post_hashtag['text'].lower().strip() == challenge_hashtag.lower().strip():
                         return challenge
         return None
-
-    def disconnect(self):
-        self.msg_dispatcher_active = False
-        self.channel.off()
-        if self.stream is not None:
-            self.stream.disconnect()
-            logger.info("Twitter channel has been disconnected")
-        else:
-            logger.debug("Twitter channel is already disconnected")
-        self.p_messenger.terminate()
-        self.p_listener.terminate()
-
-    def get_account_ids(self):
-        return self.accounts
-
-    def get_channel_obj(self):
-        return self.channel
-
-    def get_name(self):
-        return self.channel.name
 
 
 class TwitterListener(tweepy.StreamListener):
