@@ -1,6 +1,7 @@
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
-from cparte.models import MetaChannel, ContributionPost
+from django.conf import settings
+from cparte.models import ContributionPost
 
 import logging
 import pickle
@@ -32,7 +33,11 @@ def listen(request, channel_name):
         request.session['meta_channel'] = pickle.dumps(meta_channel)
     else:
         logger.error("The channel is not enabled")
-    return HttpResponseRedirect("/admin/cparte/channel/")
+    if settings.URL_PREFIX:
+        redirect_url = "%s/admin/cparte/channel/" % settings.URL_PREFIX
+    else:
+        redirect_url = "/admin/cparte/channel/"
+    return HttpResponseRedirect(redirect_url)
 
 
 def hangup(request, channel_name):
@@ -40,4 +45,8 @@ def hangup(request, channel_name):
     meta_channel = pickle.loads(str_meta_channel)
     meta_channel.disconnect(channel_name)
     request.session['meta_channel'] = pickle.dumps(meta_channel)
-    return HttpResponseRedirect("/admin/cparte/channel/")
+    if settings.URL_PREFIX:
+        redirect_url = "%s/admin/cparte/channel/" % settings.URL_PREFIX
+    else:
+        redirect_url = "/admin/cparte/channel/"
+    return HttpResponseRedirect(redirect_url)
