@@ -729,7 +729,7 @@ class PostManager():
         return message
 
     def _validate_input(self, post, challenge):
-        curated_text = self.channel.get_text_post(post).encode('utf-8')
+        curated_text = self.channel.get_text_post(post)
         if challenge.style_answer == self.STRUCTURED_ANSWER:
             result = re.search(challenge.format_answer, curated_text)
             if result is not None:
@@ -992,11 +992,17 @@ class SocialNetwork():
 
     def disconnect(self):
         # Kill process that manages the message queue
-        os.kill(self.pid_messenger, signal.SIGKILL)
-        logger.info("Messenger has been stopped")
+        try:
+            os.kill(self.pid_messenger, signal.SIGKILL)
+            logger.info("Messenger has been stopped")
+        except Exception as e:
+            logger.error("The process running the messenger does not exist")
         # Kill the process that listens the firehose of Twitter
-        os.kill(self.pid_listener, signal.SIGKILL)
-        logger.info("Listener has been stopped")
+        try:
+            os.kill(self.pid_listener, signal.SIGKILL)
+            logger.info("Listener has been stopped")
+        except Exception as e:
+            logger.error("The process running the listener does not exist")
         # Flag that the channel is off-line
         self.channel.off()
         self.pid_messenger = None
@@ -1190,7 +1196,7 @@ class Twitter(SocialNetwork):
             return 'reply', post.in_reply_to_status_id_str
 
     def get_text_post(self, post):
-        return post.text
+        return post.text.encode('utf-8')
 
     def get_id_post(self, post):
         return post.id_str
@@ -1199,9 +1205,9 @@ class Twitter(SocialNetwork):
         return post.in_reply_to_status_id_str
 
     def get_info_post(self, post):
-        return {'id': post.id_str, 'datetime': post.created_at, 'text': post.text, 'url': self.build_url_post(post),
-                'author': self.get_author(post), 'channel': self.channel, 'votes': 0, 're_posts': post.retweet_count,
-                'bookmarks': post.favorite_count}
+        return {'id': post.id_str, 'datetime': post.created_at, 'text': post.text.encode('utf-8'),
+                'url': self.build_url_post(post), 'author': self.get_author(post), 'channel': self.channel, 'votes': 0,
+                're_posts': post.retweet_count, 'bookmarks': post.favorite_count}
 
     def build_url_post(self, post):
         return self.channel.url + post.author.screen_name + "/status/" + post.id_str
@@ -1220,12 +1226,16 @@ class Twitter(SocialNetwork):
 
     def register_new_author(self, post):
         author_post = post.author
-        new_author = Author(name=author_post.name, screen_name=author_post.screen_name,
+        if author_post.description:
+            author_desc = author_post.description.encode('utf-8')
+        else:
+            author_desc = None
+
+        new_author = Author(name=author_post.name.encode('utf-8'), screen_name=author_post.screen_name,
                             id_in_channel=author_post.id_str, channel=self.channel,
                             friends=author_post.friends_count, followers=author_post.followers_count,
-                            url=self.channel.url + post.author.screen_name,
-                            description=author_post.description.encode('utf-8'), language=author_post.lang,
-                            posts_count=author_post.statuses_count)
+                            url=self.channel.url + post.author.screen_name, description=author_desc,
+                            language=author_post.lang, posts_count=author_post.statuses_count)
         new_author.save(force_insert=True)
         return new_author
 
