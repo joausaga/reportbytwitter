@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.db import connection
 from apiclient.discovery import build
-from multiprocessing import Process
+import multiprocessing
 import tweepy
 import abc
 import re
@@ -13,8 +13,10 @@ import json
 import ast
 import os
 import signal
+import traceback
 
 logger = logging.getLogger(__name__)
+#logger = multiprocessing.get_logger()
 
 
 """ Data Models
@@ -437,18 +439,22 @@ class PostManager():
             raise Exception(e_msg)
 
     def manage_post(self, post):
-        author = self.channel.get_author(post)
-        if author is None or not author.is_banned():
-            type_post = self.channel.get_type_post(post)
-            if type_post[0] == "reply" or type_post[0] == "status":
-                return self._do_manage(post, author, type_post[1])
+        try:
+            author = self.channel.get_author(post)
+            if author is None or not author.is_banned():
+                type_post = self.channel.get_type_post(post)
+                if type_post[0] == "reply" or type_post[0] == "status":
+                    return self._do_manage(post, author, type_post[1])
+                else:
+                    logger.warninig("The type %s of the message is unknown. Message text: '%s'" %
+                                    (type_post[0], self.channel.get_text_post(post)))
+                    return None
             else:
-                logger.warninig("The type %s of the message is unknown. Message text: '%s'" %
-                                (type_post[0], self.channel.get_text_post(post)))
+                logger.info("The post was ignore, its author, called %s, is in the black list" % author.screen_name)
                 return None
-        else:
-            logger.info("The post was ignore, its author, called %s, is in the black list" % author.screen_name)
-            return None
+        except Exception as e:
+            logger.critical("Unexpected error when managing the post: %s" % self.channel.get_text_post(post))
+            logger.critical(traceback.print_exc())
 
     def _do_manage(self, post, author, parent_post_id=None):
         app_parent_post = None
@@ -618,8 +624,8 @@ class PostManager():
             self._discard_temporal_post(author, challenge)  # Discard the remaining temporal posts related to 'challenge'
             return message
         except (ContributionPost.DoesNotExist, ContributionPost.MultipleObjectsReturned) as e:
-            logger.critical("Error when trying to update a previous contribution. %s" % e)
-            return None
+            logger.critical("Error when trying to update a previous contribution. %s" % str(e))
+            raise None
 
     def _get_extra_info(self, text, campaign):
         reg_expr = re.compile(campaign.extrainfo.format_answer)
@@ -1125,13 +1131,13 @@ class Twitter(SocialNetwork):
         listener = TwitterListener(manager)
         stream = tweepy.Stream(self.auth_handler, listener)
         # Spawn off a process that listens Twitter's firehose
-        proc_listener = Process(target=stream.filter, args=[self.accounts, self.hashtags])
+        proc_listener = multiprocessing.Process(target=stream.filter, args=[self.accounts, self.hashtags])
         connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
         proc_listener.start()
         self.pid_listener = proc_listener.pid
         logger.info("Starting to listen Twitter Stream")
         # Spawn off a process that manages the queue of messages to send
-        proc_messenger = Process(target=self.run_msg_dispatcher)
+        proc_messenger = multiprocessing.Process(target=self.run_msg_dispatcher)
         connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
         proc_messenger.start()
         self.pid_messenger = proc_messenger.pid
