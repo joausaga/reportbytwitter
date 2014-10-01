@@ -14,6 +14,7 @@ import ast
 import os
 import signal
 import traceback
+import sys
 
 logger = logging.getLogger(__name__)
 #logger = multiprocessing.get_logger()
@@ -453,8 +454,9 @@ class PostManager():
                 logger.info("The post was ignore, its author, called %s, is in the black list" % author.screen_name)
                 return None
         except Exception as e:
-            logger.critical("Unexpected error when managing the post: %s" % self.channel.get_text_post(post))
-            logger.critical(traceback.print_exc())
+            logger.critical("%s error when managing the post: %s" % (e.message, self.channel.get_text_post(post)))
+            ex_type, ex, tb = sys.exc_info()
+            logger.critical(traceback.print_tb(tb))
 
     def _do_manage(self, post, author, parent_post_id=None):
         app_parent_post = None
@@ -625,7 +627,7 @@ class PostManager():
             return message
         except (ContributionPost.DoesNotExist, ContributionPost.MultipleObjectsReturned) as e:
             logger.critical("Error when trying to update a previous contribution. %s" % str(e))
-            raise None
+            return None
 
     def _get_extra_info(self, text, campaign):
         reg_expr = re.compile(campaign.extrainfo.format_answer)
@@ -1002,13 +1004,13 @@ class SocialNetwork():
             os.kill(self.pid_messenger, signal.SIGKILL)
             logger.info("Messenger has been stopped")
         except Exception as e:
-            logger.error("The process running the messenger does not exist")
-        # Kill the process that listens the firehose of Twitter
+            logger.error("An error occurs trying to kill the process that runs the messenger. %s" % e.message)
+        # Kill the process that listens Twitter's stream
         try:
             os.kill(self.pid_listener, signal.SIGKILL)
             logger.info("Listener has been stopped")
         except Exception as e:
-            logger.error("The process running the listener does not exist")
+            logger.error("An error occurs trying to kill the process that runs the listener. %s" % e.message)
         # Flag that the channel is off-line
         self.channel.off()
         self.pid_messenger = None
