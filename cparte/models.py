@@ -14,7 +14,6 @@ import ast
 import os
 import signal
 import traceback
-import sys
 
 logger = logging.getLogger(__name__)
 #logger = multiprocessing.get_logger()
@@ -454,9 +453,8 @@ class PostManager():
                 logger.info("The post was ignore, its author, called %s, is in the black list" % author.screen_name)
                 return None
         except Exception as e:
-            logger.critical("%s error when managing the post: %s" % (e.message, self.channel.get_text_post(post)))
-            ex_type, ex, tb = sys.exc_info()
-            logger.critical(traceback.print_tb(tb))
+            logger.critical("ERROR when managing the post: %s. Internal message: %s" % (self.channel.get_text_post(post), e))
+            logger.critical(traceback.format_exc())
 
     def _do_manage(self, post, author, parent_post_id=None):
         app_parent_post = None
@@ -483,8 +481,9 @@ class PostManager():
         if within_initiative and challenge:
             if author is None:
                 author = self.channel.register_new_author(post)
-            logger.info("Post from %s within the initiative: %s, campaign: %s, challenge: %s" %
-                        (author.screen_name, challenge.campaign.initiative.name, challenge.campaign.name, challenge.name))
+            logger.info("Post from %s within the initiative: %s, campaign: %s, challenge: %s. Text: %s" %
+                        (author.screen_name, challenge.campaign.initiative.name, challenge.campaign.name,
+                         challenge.name, self.channel.get_text_post(post)))
             return self._process_input(post, challenge, parent_post_id)
         elif parent_post_id is not None:  # It is a reply but not to a challenge post
             if app_parent_post and app_parent_post.category == self.NOTIFICATION_MESSAGE:
@@ -500,12 +499,11 @@ class PostManager():
                         elif message.category == "incorrect_answer":
                             # It is a reply to a wrong input notification
                             author = self.channel.get_author(post)
+                            app_parent_post.do_answer()
                             if not author.is_banned():
                                 ret = self._process_input(post, app_parent_post.challenge, parent_post_id)
-                                app_parent_post.do_answer()
                                 return ret
                             else:
-                                app_parent_post.do_answer()
                                 return None
                         elif message.category == "ask_change_contribution":
                             temp_contribution = self._get_contribution_post(app_parent_post)
@@ -513,11 +511,12 @@ class PostManager():
                             answer_terms = message.answer_terms.split()
                             found_term = False
                             for answer_term in answer_terms:
-                                if answer_term in self.channel.get_text_post(post).lower():
+                                if self._to_unicode(answer_term).lower() in \
+                                   self._to_unicode(self.channel.get_text_post(post)).lower():
                                     found_term = True
+                            app_parent_post.do_answer()
                             if found_term:
                                 ret = self._update_contribution(post, app_parent_post)
-                                app_parent_post.do_answer()
                                 return ret
                             else:
                                 new_message = app_parent_post.campaign.messages.get(category="not_understandable_change_contribution_reply")
@@ -525,7 +524,6 @@ class PostManager():
                                                  message=new_message)
                                 # If we cannot understand the answer we reply saying that and discard the temporal post
                                 temp_contribution.discard()
-                                app_parent_post.do_answer()
                                 return new_message
                         elif message.category == "incorrect_author_extrainfo":
                             # It is a reply to a wrong extra info notification
@@ -559,7 +557,7 @@ class PostManager():
             found_all_terms = True
             terms = message.key_terms.split()
             for term in terms:
-                if term not in text_post:
+                if self._to_unicode(term).lower() not in self._to_unicode(text_post).lower():
                     found_all_terms = False
             if found_all_terms:
                 return message
@@ -573,6 +571,8 @@ class PostManager():
         if extra_info is not None:
             logger.info("%s's extra information was processed correctly. His/her contribution was permanently saved." %
                         self.channel.get_author(post).name)
+            # Preserve also all of the pending posts that were saved temporarily because of the lack of the author's
+            # extra info
             return self._preserve_temporal_post(post, extra_info, app_parent_post)
         else:
             self._increment_author_wrong_request(post)
@@ -618,21 +618,21 @@ class PostManager():
             new_post = ContributionPost.objects.filter(challenge=challenge, author=author.id, status="TE").\
                        order_by('-datetime').first()  # Temporal
             new_post.preserve()  # Preserve the newest (temporal)
+            old_post.discard()  # Discard the oldest (permanent)
+            self._discard_temporal_post(author, challenge)  # Discard the remaining temporal posts related to 'challenge'
             message = campaign.messages.get(category="thanks_change")
             self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message,
                              extra=new_post)
-            old_post.discard()  # Discard the oldest (permanent)
             author.reset_mistake_flags()
-            self._discard_temporal_post(author, challenge)  # Discard the remaining temporal posts related to 'challenge'
             return message
         except (ContributionPost.DoesNotExist, ContributionPost.MultipleObjectsReturned) as e:
             logger.critical("Error when trying to update a previous contribution. %s" % str(e))
             return None
 
     def _get_extra_info(self, text, campaign):
-        reg_expr = re.compile(campaign.extrainfo.format_answer)
+        reg_expr = re.compile(self._to_unicode(campaign.extrainfo.format_answer))
         for term in text.split():
-            if reg_expr.match(term):
+            if reg_expr.match(self._to_unicode(term)):
                 return term
         return None
 
@@ -665,7 +665,7 @@ class PostManager():
                                 if len(existing_posts) == 1:
                                     break
                         existing_post = existing_posts[0]
-                        if curated_input != existing_post.contribution:
+                        if self._to_unicode(curated_input) != self._to_unicode(existing_post.contribution):
                             # Only if the new contribution is different from the previous we will process it
                             # otherwise it will be ignored
                             self._save_post(post, curated_input, parent_post_id, challenge, temporal=True)
@@ -709,7 +709,7 @@ class PostManager():
                 self._send_reply(post, initiative=campaign.initiative, challenge=challenge, message=new_message)
                 return new_message
             else:
-                logger.info("The contribution '%s' of the participant %s does not satisfy the format required by the "
+                logger.info("The contribution %s of the participant %s does not satisfy the required format of the "
                             "challenge %s" % (self.channel.get_text_post(post), self.channel.get_author(post).name,
                                               challenge.name))
                 # Reply saying that his/her input was wrong
@@ -737,9 +737,9 @@ class PostManager():
         return message
 
     def _validate_input(self, post, challenge):
-        curated_text = self.channel.get_text_post(post)
+        curated_text = self._to_unicode(self.channel.get_text_post(post))
         if challenge.style_answer == self.STRUCTURED_ANSWER:
-            result = re.search(challenge.format_answer, curated_text)
+            result = re.search(self._to_unicode(challenge.format_answer), curated_text)
             if result is not None:
                 start = result.start()
                 end = result.end()
@@ -887,6 +887,12 @@ class PostManager():
             logger.error("Error when trying to short the initiative URL. Message: %s" % e)
         return short_url
 
+    def _to_unicode(self, obj, encoding="utf-8"):
+        if isinstance(obj, basestring):
+            if not isinstance(obj, unicode):
+                obj = unicode(obj, encoding)
+        return obj
+
 
 class SocialNetwork():
     __metaclass__  = abc.ABCMeta
@@ -1004,13 +1010,13 @@ class SocialNetwork():
             os.kill(self.pid_messenger, signal.SIGKILL)
             logger.info("Messenger has been stopped")
         except Exception as e:
-            logger.error("An error occurs trying to kill the process that runs the messenger. %s" % e.message)
+            logger.error("An error occurs trying to kill the process that runs the messenger. Internal message: %s" % e)
         # Kill the process that listens Twitter's stream
         try:
             os.kill(self.pid_listener, signal.SIGKILL)
             logger.info("Listener has been stopped")
         except Exception as e:
-            logger.error("An error occurs trying to kill the process that runs the listener. %s" % e.message)
+            logger.error("An error occurs trying to kill the process that runs the listener. Internal message: %s" % e)
         # Flag that the channel is off-line
         self.channel.off()
         self.pid_messenger = None
@@ -1149,6 +1155,7 @@ class Twitter(SocialNetwork):
     def _post_public(self, message, payload):
         api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
+            message = message.encode("utf-8")
             response = api.update_status(status=message)
             logger.info("The post '%s' has been published through Twitter" % message)
             self.save_post_db(payload, response, self)
@@ -1161,6 +1168,7 @@ class Twitter(SocialNetwork):
     def _send_direct_message(self, message, author_username, payload):
         api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
+            message = message.encode("utf-8")
             response = api.send_direct_message(screen_name=author_username, text=message)
             logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_username))
             self.save_post_db(payload, response, self)
@@ -1173,6 +1181,7 @@ class Twitter(SocialNetwork):
     def _reply_to(self, message, id_post, payload):
         api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
+            message = message.encode("utf-8")
             response = api.update_status(status=message, in_reply_to_status_id=id_post)
             logger.info("The post '%s' has been sent to %s through Twitter" % (message, payload['author_username']))
             self.save_post_db(payload, response, self)
@@ -1204,7 +1213,7 @@ class Twitter(SocialNetwork):
             return 'reply', post.in_reply_to_status_id_str
 
     def get_text_post(self, post):
-        return post.text.encode('utf-8')
+        return post.text
 
     def get_id_post(self, post):
         return post.id_str
@@ -1213,7 +1222,7 @@ class Twitter(SocialNetwork):
         return post.in_reply_to_status_id_str
 
     def get_info_post(self, post):
-        return {'id': post.id_str, 'datetime': post.created_at, 'text': post.text.encode('utf-8'),
+        return {'id': post.id_str, 'datetime': post.created_at, 'text': post.text,
                 'url': self.build_url_post(post), 'author': self.get_author(post), 'channel': self.channel, 'votes': 0,
                 're_posts': post.retweet_count, 'bookmarks': post.favorite_count}
 
@@ -1234,15 +1243,10 @@ class Twitter(SocialNetwork):
 
     def register_new_author(self, post):
         author_post = post.author
-        if author_post.description:
-            author_desc = author_post.description.encode('utf-8')
-        else:
-            author_desc = None
-
-        new_author = Author(name=author_post.name.encode('utf-8'), screen_name=author_post.screen_name,
+        new_author = Author(name=author_post.name, screen_name=author_post.screen_name,
                             id_in_channel=author_post.id_str, channel=self.channel,
                             friends=author_post.friends_count, followers=author_post.followers_count,
-                            url=self.channel.url + post.author.screen_name, description=author_desc,
+                            url=self.channel.url + post.author.screen_name, description=author_post.description,
                             language=author_post.lang, posts_count=author_post.statuses_count)
         new_author.save(force_insert=True)
         return new_author
