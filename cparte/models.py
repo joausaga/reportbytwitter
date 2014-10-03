@@ -243,7 +243,7 @@ class ContributionPost(models.Model):
     votes = models.IntegerField(default=0)      # e.g. +1 in Google+, like in Facebook
     re_posts = models.IntegerField(default=0)   # e.g. Share in Facebook, RT in Twitter
     bookmarks = models.IntegerField(default=0)  # e.g. Favourite in Twitter
-    STATUS = (('TE', 'Temporal'), ('PE', 'Permanent'), ('DI','Discarded'))
+    STATUS = (('TE', 'Temporal'), ('PE', 'Permanent'), ('DI', 'Discarded'))
     status = models.CharField(max_length=3, choices=STATUS)
 
     def __unicode__(self):
@@ -333,7 +333,7 @@ class MetaChannel():
 
     def channel_enabled(self, channel_name):
         channel_name = channel_name.lower()
-        return self.channels.has_key(channel_name)
+        return channel_name in self.channels
 
     def broadcast(self, message):
         for name in self.channels.iterkeys():
@@ -351,7 +351,7 @@ class MetaChannel():
     def send_direct_message(self, channel_name, recipient, message):
         channel_name = channel_name.lower()
         if self.channels[channel_name]:
-            self.channels[channel_name].queue_message(message=message, type_msg="DM", payload={'author':recipient})
+            self.channels[channel_name].queue_message(message=message, type_msg="DM", payload={'author': recipient})
         else:
             logger.error("%s channel is unavailable, it cannot send direct message through it" % channel_name)
 
@@ -452,7 +452,7 @@ class PostManager():
             logger.critical(traceback.format_exc())
 
     # OK!
-    def _do_manage(self, post, author):
+    def _do_manage(self, post, author_obj):
         parent_post_id = post["parent_id"]
         app_parent_post = None
         author_id = post["author"]["id"]
@@ -473,15 +473,15 @@ class PostManager():
                                     app_parent_post.app_parent_post is None
                 challenge = app_parent_post.challenge if within_initiative else None
             except AppPost.DoesNotExist:
-                return None # I'm not interested in processing replies that were not posted to the app posts
+                return None  # I'm not interested in processing replies that were not posted to the app posts
 
         if within_initiative and challenge:
-            if author is None:
-                author = self.channel.register_new_author(post["author"])
+            if author_obj is None:
+                author_obj = self.channel.register_new_author(post["author"])
             logger.info("Post from %s within the initiative: %s, campaign: %s, challenge: %s. Text: %s" %
-                        (author.screen_name, challenge.campaign.initiative.name, challenge.campaign.name,
+                        (author_obj.screen_name, challenge.campaign.initiative.name, challenge.campaign.name,
                          challenge.name, post["text"]))
-            return self._process_input(post, challenge)
+            return self._process_input(post, author_obj, challenge)
         elif parent_post_id is not None:  # It is a reply but not to a challenge post
             if app_parent_post and app_parent_post.category == self.NOTIFICATION_MESSAGE:
                 # Only process replies that were made to app posts categorized as notification (NT)
@@ -490,14 +490,14 @@ class PostManager():
                     if message:
                         if message.category == "request_author_extrainfo":
                             # It is a reply to an extra info request
-                            ret = self._process_extra_info(post, app_parent_post)
+                            ret = self._process_extra_info(post, author_obj, app_parent_post)
                             app_parent_post.do_answer()
                             return ret
                         elif message.category == "incorrect_answer":
                             # It is a reply to a wrong input notification
                             app_parent_post.do_answer()
-                            if not author.is_banned():
-                                ret = self._process_input(post, app_parent_post.challenge)
+                            if not author_obj.is_banned():
+                                ret = self._process_input(post, author_obj, app_parent_post.challenge)
                                 return ret
                             else:
                                 return None
@@ -511,7 +511,7 @@ class PostManager():
                                 if self._to_unicode(answer_term).lower() in self._to_unicode(post["text"]).lower():
                                     found_term = True
                             if found_term:
-                                ret = self._update_contribution(post, app_parent_post)
+                                ret = self._update_contribution(post, author_obj, app_parent_post)
                                 return ret
                             else:
                                 new_message = app_parent_post.campaign.messages.get(category="not_understandable_change_contribution_reply")
@@ -521,7 +521,7 @@ class PostManager():
                                 return new_message
                         elif message.category == "incorrect_author_extrainfo":
                             # It is a reply to a wrong extra info notification
-                            ret = self._process_extra_info(post, app_parent_post)
+                            ret = self._process_extra_info(post, author_obj, app_parent_post)
                             app_parent_post.do_answer()
                             return ret
                         else:
@@ -559,23 +559,21 @@ class PostManager():
         return None
 
     # OK!
-    def _process_extra_info(self, post, app_parent_post):
+    def _process_extra_info(self, post, author_obj, app_parent_post):
         text_post = post["text"].lower()
         campaign = app_parent_post.campaign
         challenge = app_parent_post.challenge
-        post_id = post["id"]
-        parent_post_id = post["parent_id"]
         author = post["author"]
         extra_info = self._get_extra_info(text_post, campaign)
         if extra_info is not None:
             logger.info("%s's extra information was processed correctly. His/her contribution was permanently saved." %
                         author["name"])
-            ret = self._preserve_temporal_post(post, extra_info, app_parent_post)
+            ret = self._preserve_temporal_post(post, author_obj, extra_info, app_parent_post)
             self._preserve_author_temporal_posts(author)
             return ret
         else:
-            self._increment_author_wrong_request(author)
-            author_wrong_request_counter = self._get_author_wrong_request_counter(author)
+            author_obj.add_request_mistake()
+            author_wrong_request_counter = author_obj.get_request_mistakes()
             if author_wrong_request_counter > self.settings['limit_wrong_requests']:
                 if author_wrong_request_counter - self.settings['limit_wrong_requests'] == 1:
                     logger.info("The participant %s has exceed the limit of wrong requests, his/her last contribution "
@@ -598,8 +596,7 @@ class PostManager():
                 return message
 
     # OK!
-    def _preserve_temporal_post(self, post, extra_info, app_parent_post):
-        author_obj = self.channel.get_author_obj(post["author"])
+    def _preserve_temporal_post(self, post, author_obj, extra_info, app_parent_post):
         author_obj.set_extra_info(extra_info)
         campaign = app_parent_post.campaign
         challenge = app_parent_post.challenge
@@ -611,20 +608,21 @@ class PostManager():
         return message
 
     # OK!
-    def _update_contribution(self, post, app_parent_post):
-        author = self.channel.get_author_obj(post["author"])
+    def _update_contribution(self, post, author_obj, app_parent_post):
         campaign = app_parent_post.campaign
         challenge = app_parent_post.challenge
         try:
-            old_post = ContributionPost.objects.get(challenge=challenge, author=author.id, status="PE")  # Permanent
-            new_post = ContributionPost.objects.filter(challenge=challenge, author=author.id, status="TE").\
-                       order_by('-datetime').first()  # Temporal
+            # Permanent Post
+            old_post = ContributionPost.objects.get(challenge=challenge, author=author_obj.id, status="PE")
+            # Temporal Post
+            new_post = ContributionPost.objects.filter(challenge=challenge, author=author_obj.id, status="TE").\
+                       order_by('-datetime').first()
             new_post.preserve()  # Preserve the newest (temporal)
             old_post.discard()  # Discard the oldest (permanent)
-            self._discard_temporal_post(author, challenge)  # Discard the remaining temporal posts related to 'challenge'
+            self._discard_temporal_post(author_obj, challenge)  # Discard the remaining temporal posts related to 'challenge'
             message = campaign.messages.get(category="thanks_change")
             self._send_reply(post, campaign.initiative, challenge, message, new_post)
-            author.reset_mistake_flags()
+            author_obj.reset_mistake_flags()
             return message
         except (ContributionPost.DoesNotExist, ContributionPost.MultipleObjectsReturned) as e:
             logger.critical("Error when trying to update a previous contribution. %s" % str(e))
@@ -644,15 +642,14 @@ class PostManager():
         return db_post.contribution_parent_post
 
     # OK!
-    def _process_input(self, post, challenge):
+    def _process_input(self, post, author_obj, challenge):
         author = post["author"]
-        parent_post_id = post["parent_id"]
         curated_input = self._validate_input(post, challenge)
         campaign = challenge.campaign
         if curated_input is not None:
             # It is a valid input
             if challenge.answers_from_same_author != self.NO_LIMIT_ANSWERS:
-                existing_posts = list(self._has_already_posted(author, challenge))
+                existing_posts = list(self._has_already_posted(author_obj, challenge))
                 if len(existing_posts) > 0:
                     if challenge.answers_from_same_author == 1:
                         # Allow changes only if the number of allowed answers is 1
@@ -672,7 +669,7 @@ class PostManager():
                         if self._to_unicode(curated_input) != self._to_unicode(existing_post.contribution):
                             # Only if the new contribution is different from the previous we will process it
                             # otherwise it will be ignored
-                            self._save_post(post, curated_input, challenge, temporal=True)
+                            self._save_post(post, author_obj, curated_input, challenge, temporal=True)
                             logger.info("A new contribution to the challenge %s was posted by the participant %s. "
                                         "It was saved temporarily" % (challenge.name, author["name"]))
                             message = campaign.messages.get(category="ask_change_contribution")
@@ -684,27 +681,27 @@ class PostManager():
                     else:
                         if len(existing_posts) <= challenge.answers_from_same_author:
                             # Save participant's answer if the participant is still under the limit of allowed answers
-                            return self._do_process_input(post, campaign, challenge, curated_input, parent_post_id)
+                            return self._do_process_input(post, author_obj, campaign, challenge, curated_input)
                         else:
                             # Send a message saying that he/she has reached the limit of allowed answers
                             message = campaign.messages.get(category="limit_answers_reached")
                             self._send_reply(post, campaign.initiative, challenge, message)
-                            self.channel.get_author_obj(post).reset_mistake_flags()
+                            author_obj.reset_mistake_flags()
                             logger.info("The participant %s has reached the limit of %s contributions allowed in the "
                                         "challenge %s" % (author["name"], challenge.answers_from_same_author, challenge.name))
                             return message
                 else:
-                    return self._do_process_input(post, campaign, challenge, curated_input, parent_post_id)
+                    return self._do_process_input(post, author_obj, campaign, challenge, curated_input)
             else:
-                return self._do_process_input(post, campaign, challenge, curated_input, parent_post_id)
+                return self._do_process_input(post, author_obj, campaign, challenge, curated_input)
         else:
             # The input is not valid
-            self._increment_author_wrong_input(author)
-            if self._get_author_wrong_input_counter(author) > self.settings['limit_wrong_inputs']:
+            author_obj.add_input_mistake()
+            if author_obj.get_input_mistakes() > self.settings['limit_wrong_inputs']:
                 logger.info("The participant %s has been banned because he/she has exceed the limit of %s wrong "
                             "contributions" % (author["name"], self.settings['limit_wrong_inputs']))
                 # Ban author and notify him that he/she has been banned
-                self._ban_author(author)
+                author_obj.ban()
                 new_message = campaign.messages.get(category="author_banned")
                 self._send_reply(post, campaign.initiative, challenge, new_message)
                 return new_message
@@ -717,18 +714,17 @@ class PostManager():
                 return message
 
     # OK!
-    def _do_process_input(self, post, campaign, challenge, curated_input, parent_post_id):
-        post_id = post["id"]
+    def _do_process_input(self, post, author_obj, campaign, challenge, curated_input):
         author = post["author"]
-        if campaign.extrainfo is None or self._author_has_extrainfo(author) is not None:
-            post_saved = self._save_post(post, curated_input, challenge, temporal=False)
+        if campaign.extrainfo is None or author_obj.get_extra_info() is not None:
+            post_saved = self._save_post(post, author_obj, curated_input, challenge, temporal=False)
             message = campaign.messages.get(category="thanks_contribution")
             self._send_reply(post, campaign.initiative, challenge, message, post_saved)
-            self.channel.get_author_obj(author).reset_mistake_flags()
+            author_obj.reset_mistake_flags()
             logger.info("The contribution '%s' of the participant %s to the challenge %s has been saved" %
                         (curated_input, author["name"], challenge.name))
         else:
-            post_saved = self._save_post(post, curated_input, challenge, temporal=True)
+            post_saved = self._save_post(post, author_obj, curated_input, challenge, temporal=True)
             message = campaign.extrainfo.messages.get(category="request_author_extrainfo")
             self._send_reply(post, campaign.initiative, challenge, message, post_saved)
             logger.info("The contribution '%s' of the participant %s to the challenge %s has been saved temporarily "
@@ -758,16 +754,14 @@ class PostManager():
 
     # OK!
     # Check if the participant has already posted an answer to the challenge
-    def _has_already_posted(self, author, challenge):
-        author_obj = self.channel.get_author_obj(author)
+    def _has_already_posted(self, author_obj, challenge):
         try:
             return ContributionPost.objects.filter(challenge=challenge, author=author_obj.id, status='PE').order_by('-datetime')
         except ContributionPost.DoesNotExist:
             return None
 
     # OK!
-    def _save_post(self, post, curated_input, challenge, temporal):
-        author_obj = self.channel.get_author_obj(post["author"])
+    def _save_post(self, post, author_obj, curated_input, challenge, temporal):
         channel_obj = self.channel.get_channel_obj()
         campaign = challenge.campaign
         initiative = campaign.initiative
@@ -787,9 +781,9 @@ class PostManager():
         return post_to_save
 
     # Discard any temporal post existing within 'challenge' and posted by 'author'
-    def _discard_temporal_post(self, author, challenge):
+    def _discard_temporal_post(self, author_obj, challenge):
         try:
-            temp_posts = ContributionPost.objects.filter(challenge=challenge, author=author.id, status='TE')
+            temp_posts = ContributionPost.objects.filter(challenge=challenge, author=author_obj.id, status='TE')
             for post in temp_posts:
                 post.discard()
             return True
@@ -818,30 +812,6 @@ class PostManager():
             return True
         except ContributionPost.DoesNotExist:
             return False
-
-    def _author_has_extrainfo(self, author):
-        author_obj = self.channel.get_author_obj(author)
-        return author_obj.get_extra_info()
-
-    def _increment_author_wrong_input(self, author):
-        author_obj = self.channel.get_author_obj(author)
-        author_obj.add_input_mistake()
-
-    def _increment_author_wrong_request(self, author):
-        author_obj = self.channel.get_author_obj(author)
-        author_obj.add_request_mistake()
-
-    def _get_author_wrong_input_counter(self, author):
-        author_obj = self.channel.get_author_obj(author)
-        return author_obj.get_input_mistakes()
-
-    def _get_author_wrong_request_counter(self, author):
-        author_obj = self.channel.get_author_obj(author)
-        return author_obj.get_request_mistakes()
-
-    def _ban_author(self, author):
-        author_obj = self.channel.get_author_obj(author)
-        author_obj.ban()
 
     def _send_reply(self, post, initiative, challenge, message, extra=None):
         msg = None
@@ -918,7 +888,7 @@ class PostManager():
 
 
 class SocialNetwork():
-    __metaclass__  = abc.ABCMeta
+    __metaclass__ = abc.ABCMeta
     initiatives = None
     accounts = None
     hashtags = None
