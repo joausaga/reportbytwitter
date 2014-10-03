@@ -1187,7 +1187,6 @@ class Twitter(SocialNetwork):
     def _post_public(self, message, payload):
         api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
-            message = message.encode("utf-8")
             response = api.update_status(status=message)
             logger.info("The post '%s' has been published through Twitter" % message)
             self.save_post_db(payload, response, self)
@@ -1200,7 +1199,6 @@ class Twitter(SocialNetwork):
     def _send_direct_message(self, message, author_id, payload):
         api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
-            message = message.encode("utf-8")
             response = api.send_direct_message(user_id=author_id, text=message)
             logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_id))
             self.save_post_db(payload, response, self)
@@ -1213,7 +1211,6 @@ class Twitter(SocialNetwork):
     def _reply_to(self, message, id_post, payload):
         api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
-            message = message.encode("utf-8")
             response = api.update_status(status=message, in_reply_to_status_id=id_post)
             logger.info("The post '%s' has been sent to %s through Twitter" % (message, payload['author_username']))
             self.save_post_db(payload, response, self)
