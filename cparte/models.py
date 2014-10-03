@@ -1125,7 +1125,7 @@ class Twitter(SocialNetwork):
             return {'delivered': True, 'response': response}
         except tweepy.TweepError as e:
             reason = ast.literal_eval(e.reason)
-            logger.error("The post couldn't be delivered. Reason: %s" % reason[0]['message'])
+            logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
             return {'delivered': False, 'response': reason}
 
     def _send_direct_message(self, message, author_id, payload):
@@ -1138,7 +1138,7 @@ class Twitter(SocialNetwork):
             return {'delivered': True, 'response': response}
         except tweepy.TweepError as e:
             reason = ast.literal_eval(e.reason)
-            logger.error("The post couldn't be delivered. Reason: %s" % reason[0]['message'])
+            logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
             return {'delivered': False, 'response': reason}
 
     def _reply_to(self, message, id_post, payload):
@@ -1151,7 +1151,7 @@ class Twitter(SocialNetwork):
             return {'delivered': True, 'response': response}
         except tweepy.TweepError as e:
             reason = ast.literal_eval(e.reason)
-            logger.error("The post couldn't be delivered. Reason: %s" % reason[0]['message'])
+            logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
             return {'delivered': False, 'response': reason}
 
     def get_post(self, id_post):
