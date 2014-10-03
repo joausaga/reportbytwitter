@@ -7,6 +7,7 @@ import tweepy
 
 class TwitterTestCase(TestCase):
     fixtures = ['cparte.json']
+    url = "https://twitter.com/"
 
     def setUp(self):
         auth = tweepy.OAuthHandler(settings.TWITTER_CONSUMER_KEY, settings.TWITTER_CONSUMER_SECRET)
@@ -48,6 +49,29 @@ class TwitterTestCase(TestCase):
                 if tweet['id'] == status.id_str:
                     tweet['status'] = status
 
+    def to_dict(self, status):
+        author = status.author
+        status_dict = {"id": status.id_str, "text": status.text, "parent_id": status.in_reply_to_status_id_str,
+                       "datetime": status.created_at, "url": self.build_url_post(status), "votes": 0,
+                       "re_posts": status.retweet_count, "bookmarks": status.favorite_count,
+                       "hashtags": self.build_hashtags_array(status),
+                       "author": {"id": author.id_str, "name": author.name, "screen_name": author.screen_name,
+                                  "print_name": "@" + author.screen_name, "url": self.url + author.screen_name,
+                                  "description": author.description, "language": author.lang,
+                                  "posts_count": author.statuses_count, "friends": author.friends_count,
+                                  "followers": author.followers_count, "groups": author.listed_count}
+                       }
+        return status_dict
+
+    def build_url_post(self, status):
+        return self.url + status.author.screen_name + "/status/" + status.id_str
+
+    def build_hashtags_array(self, status):
+        hashtags = []
+        for hashtag in status.entities['hashtags']:
+            hashtags.append(hashtag['text'].lower().strip())
+        return hashtags
+
 class TestAppBehavior(TwitterTestCase):
 
     def test_manage_post_new_user_correct_answer_to_new_challenge(self):
@@ -56,7 +80,7 @@ class TestAppBehavior(TwitterTestCase):
         correct_post_new_user_new_challenge = None
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_new_user_new_challenge":
-                correct_post_new_user_new_challenge = testing_post['status']
+                correct_post_new_user_new_challenge = self.to_dict(testing_post['status'])
         output = self.manager.manage_post(correct_post_new_user_new_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "request_author_extrainfo")
@@ -67,7 +91,7 @@ class TestAppBehavior(TwitterTestCase):
         incorrect_post_new_user_new_challenge = None
         for testing_post in self.testing_posts:
             if testing_post['type'] == "incorrect_post_new_user_new_challenge":
-                incorrect_post_new_user_new_challenge = testing_post['status']
+                incorrect_post_new_user_new_challenge = self.to_dict(testing_post['status'])
         output = self.manager.manage_post(incorrect_post_new_user_new_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")
@@ -78,7 +102,7 @@ class TestAppBehavior(TwitterTestCase):
         correct_post_existing_user_new_challenge = None
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_existing_user_new_challenge":
-                correct_post_existing_user_new_challenge = testing_post['status']
+                correct_post_existing_user_new_challenge = self.to_dict(testing_post['status'])
         output = self.manager.manage_post(correct_post_existing_user_new_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "thanks_contribution")
@@ -89,7 +113,7 @@ class TestAppBehavior(TwitterTestCase):
         correct_post_existing_user_answered_challenge = None
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_existing_user_answered_challenge":
-                correct_post_existing_user_answered_challenge = testing_post['status']
+                correct_post_existing_user_answered_challenge = self.to_dict(testing_post['status'])
         output = self.manager.manage_post(correct_post_existing_user_answered_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "ask_change_contribution")
@@ -100,7 +124,7 @@ class TestAppBehavior(TwitterTestCase):
         incorrect_post_existing_user_new_challenge = None
         for testing_post in self.testing_posts:
             if testing_post['type'] == "incorrect_post_existing_user_new_challenge":
-                incorrect_post_existing_user_new_challenge = testing_post['status']
+                incorrect_post_existing_user_new_challenge = self.to_dict(testing_post['status'])
         output = self.manager.manage_post(incorrect_post_existing_user_new_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")
@@ -111,7 +135,7 @@ class TestAppBehavior(TwitterTestCase):
         incorrect_post_existing_user_answered_challenge = None
         for testing_post in self.testing_posts:
             if testing_post['type'] == "incorrect_post_existing_user_answered_challenge":
-                incorrect_post_existing_user_answered_challenge = testing_post['status']
+                incorrect_post_existing_user_answered_challenge = self.to_dict(testing_post['status'])
         output = self.manager.manage_post(incorrect_post_existing_user_answered_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")
