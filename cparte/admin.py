@@ -114,7 +114,7 @@ class AppPostAdmin(admin.ModelAdmin):
                            'post_id': None, 'initiative_id': obj.initiative.id,
                            'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id}
                 payload_json = json.dumps(payload)
-                social_network.send_message(message=obj.text, type_msg="PU", payload=payload_json)
+                social_network.queue_message(message=obj.text, type_msg="PU", payload=payload_json)
             else:
                 raise Exception("The length of the message exceed the channel's limit (%s) for messages" % ch.max_length_msgs)
         else:
@@ -127,6 +127,10 @@ class ContributionPostAdmin(admin.ModelAdmin):
     list_display_links = ('contribution',)
     ordering = ('datetime',)
     list_filter = ['initiative', 'campaign', 'challenge', 'channel']
+
+    def queryset(self, request):
+        qs = super(ContributionPostAdmin, self).queryset(request)
+        return qs.filter(category="PE")
 
     def view(self, obj):
         return format_html("<a href=\"" + obj.url + "\" target=\"_blank\">Link</a>")
