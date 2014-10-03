@@ -941,9 +941,9 @@ class SocialNetwork():
     # Register in the database a new author
     def register_new_author(self, author):
         new_author = Author(name=author["name"], screen_name=author["screen_name"], id_in_channel=author["id"],
-                            channel=self.channel, friends=author["friends_count"], followers=author["followers_count"],
-                            url=author["url"], description=author["description"], language=author["lang"],
-                            posts_count=author["statuses_count"])
+                            channel=self.channel, friends=author["friends"], followers=author["followers"],
+                            url=author["url"], description=author["description"], language=author["language"],
+                            posts_count=author["posts_count"])
         new_author.save(force_insert=True)
         return new_author
 
