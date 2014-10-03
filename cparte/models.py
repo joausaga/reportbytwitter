@@ -520,8 +520,11 @@ class PostManager():
                                 return ret
                             else:
                                 new_message = app_parent_post.campaign.messages.get(category="not_understandable_change_contribution_reply")
-                                self._send_reply(post, initiative=app_parent_post.initiative, challenge=app_parent_post.challenge,
-                                                 message=new_message)
+                                post_id = self.channel.get_id_post(post)
+                                parent_post_id = self.channel.get_parent_post_id(post)
+                                author = self.channel.get_author(post)
+                                self._send_reply(post_id, parent_post_id, author, app_parent_post.initiative,
+                                                 app_parent_post.challenge, new_message)
                                 # If we cannot understand the answer we reply saying that and discard the temporal post
                                 temp_contribution.discard()
                                 return new_message
@@ -567,13 +570,16 @@ class PostManager():
         text_post = self.channel.get_text_post(post).lower()
         campaign = app_parent_post.campaign
         challenge = app_parent_post.challenge
+        post_id = self.channel.get_id_post(post)
+        parent_post_id = self.channel.get_parent_post_id(post)
+        author = self.channel.get_author(post)
         extra_info = self._get_extra_info(text_post, campaign)
         if extra_info is not None:
             logger.info("%s's extra information was processed correctly. His/her contribution was permanently saved." %
                         self.channel.get_author(post).name)
-            # Preserve also all of the pending posts that were saved temporarily because of the lack of the author's
-            # extra info
-            return self._preserve_temporal_post(post, extra_info, app_parent_post)
+            ret = self._preserve_temporal_post(post, extra_info, app_parent_post)
+            self._preserve_author_temporal_post(author)
+            return ret
         else:
             self._increment_author_wrong_request(post)
             if self._get_author_wrong_request_counter(post) > self.settings['limit_wrong_requests']:
@@ -582,7 +588,7 @@ class PostManager():
                                 "will be discarded" % self.channel.get_author(post).name)
                     # A notification message will be sent only after the first time the limit was exceed
                     message = campaign.messages.get(category="contribution_cannot_save")
-                    self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message)
+                    self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, message)
                     # Discard the "incomplete" contribution
                     contribution_post = self._get_contribution_post(app_parent_post)
                     contribution_post.discard()
@@ -594,10 +600,12 @@ class PostManager():
             else:
                 logger.info("%s's reply is in an incorrect format" % self.channel.get_author(post).name)
                 message = campaign.extrainfo.messages.get(category="incorrect_author_extrainfo")
-                self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge,message=message)
+                self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, message)
                 return message
 
     def _preserve_temporal_post(self, post, extra_info, app_parent_post):
+        post_id = self.channel.get_id_post(post)
+        parent_post_id = self.channel.get_parent_post_id(post)
         author = self.channel.get_author(post)
         author.set_extra_info(extra_info)
         campaign = app_parent_post.campaign
@@ -605,11 +613,13 @@ class PostManager():
         post_db = self._get_contribution_post(app_parent_post)
         post_db.preserve()
         message = campaign.messages.get(category="thanks_contribution")
-        self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message)
+        self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, message)
         author.reset_mistake_flags()
         return message
 
     def _update_contribution(self, post, app_parent_post):
+        post_id = self.channel.get_id_post(post)
+        parent_post_id = self.channel.get_parent_post_id(post)
         author = self.channel.get_author(post)
         campaign = app_parent_post.campaign
         challenge = app_parent_post.challenge
@@ -621,8 +631,7 @@ class PostManager():
             old_post.discard()  # Discard the oldest (permanent)
             self._discard_temporal_post(author, challenge)  # Discard the remaining temporal posts related to 'challenge'
             message = campaign.messages.get(category="thanks_change")
-            self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message,
-                             extra=new_post)
+            self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, message, new_post)
             author.reset_mistake_flags()
             return message
         except (ContributionPost.DoesNotExist, ContributionPost.MultipleObjectsReturned) as e:
@@ -643,6 +652,8 @@ class PostManager():
         return db_post.contribution_parent_post
 
     def _process_input(self, post, challenge, parent_post_id=None):
+        post_id = self.channel.get_id_post(post)
+        author = self.channel.get_author(post)
         curated_input = self._validate_input(post, challenge)
         campaign = challenge.campaign
         if curated_input is not None:
@@ -673,8 +684,8 @@ class PostManager():
                                         "It was saved temporarily" % (challenge.name,
                                                                       self.channel.get_author(post).name))
                             message = campaign.messages.get(category="ask_change_contribution")
-                            self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge,
-                                             message=message, extra=(curated_input, existing_post))
+                            self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, message,
+                                             (curated_input, existing_post))
                             return message
                         else:
                             logger.info("The new contribution: %s is equal as the already existing" % curated_input)
@@ -687,7 +698,7 @@ class PostManager():
                         else:
                             # Send a message saying that he/she has reached the limit of allowed answers
                             message = campaign.messages.get(category="limit_answers_reached")
-                            self._send_reply(post, initiative=campaign.initiative, challenge=challenge, message=message)
+                            self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, message)
                             self.channel.get_author(post).reset_mistake_flags()
                             logger.info("The participant %s has reached the limit of %s contributions allowed in the "
                                         "challenge %s" % (self.channel.get_author(post).name,
@@ -706,7 +717,7 @@ class PostManager():
                 # Ban author and notify him that he/she has been banned
                 self._ban_author(post)
                 new_message = campaign.messages.get(category="author_banned")
-                self._send_reply(post, initiative=campaign.initiative, challenge=challenge, message=new_message)
+                self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, new_message)
                 return new_message
             else:
                 logger.info("The contribution %s of the participant %s does not satisfy the required format of the "
@@ -714,23 +725,23 @@ class PostManager():
                                               challenge.name))
                 # Reply saying that his/her input was wrong
                 message = campaign.messages.get(category="incorrect_answer")
-                self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message)
+                self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, message)
                 return message
 
     def _do_process_input(self, post, campaign, challenge, curated_input, parent_post_id):
+        post_id = self.channel.get_id_post(post)
+        author = self.channel.get_author(post)
         if campaign.extrainfo is None or self._author_has_extrainfo(post) is not None:
             post_saved = self._save_post(post, curated_input, parent_post_id, challenge, temporal=False)
             message = campaign.messages.get(category="thanks_contribution")
-            self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message,
-                             extra=post_saved)
+            self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, message, post_saved)
             self.channel.get_author(post).reset_mistake_flags()
             logger.info("The contribution '%s' of the participant %s to the challenge %s has been saved" %
                         (curated_input, self.channel.get_author(post).name, challenge.name))
         else:
             post_saved = self._save_post(post, curated_input, parent_post_id, challenge, temporal=True)
             message = campaign.extrainfo.messages.get(category="request_author_extrainfo")
-            self._send_reply(post=post, initiative=campaign.initiative, challenge=challenge, message=message,
-                             extra=post_saved)
+            self._send_reply(post_id, parent_post_id, author, campaign.initiative, challenge, message, post_saved)
             logger.info("The contribution '%s' of the participant %s to the challenge %s has been saved temporarily "
                         "until getting the required additional information of the contributor" %
                         (curated_input, self.channel.get_author(post).name, challenge.name))
@@ -795,6 +806,28 @@ class PostManager():
         except ContributionPost.DoesNotExist:
             return False
 
+    # Preserve author's posts that were saved as temporal because of the lack of his/her extra info
+    def _preserve_author_temporal_post(self, author):
+        try:
+            temp_posts = ContributionPost.objects.filter(author=author.id, status='TE')
+            for post in temp_posts:
+                try:
+                    app_post = AppPost.objects.get(contribution_parent_post=post.id, answered=False)
+                    message_sent = self._get_parent_post_message(app_post.text, app_post.campaign)
+                    if message_sent.category == "request_author_extrainfo":
+                        campaign = app_post.campaign
+                        challenge = app_post.challenge
+                        post.preserve()
+                        app_post.do_answer()
+                        message = campaign.messages.get(category="thanks_contribution")
+                        self._send_reply(post.id_in_channel, post.in_reply_to, author, campaign.initiative, challenge,
+                                         message)
+                except AppPost.DoesNotExist, AppPost.MultipleObjectsReturned:
+                    pass
+            return True
+        except ContributionPost.DoesNotExist:
+            return False
+
     def _author_has_extrainfo(self, post):
         author = self.channel.get_author(post)
         return author.get_extra_info()
@@ -819,13 +852,12 @@ class PostManager():
         author = self.channel.get_author(post)
         author.ban()
 
-    def _send_reply(self, post, initiative, challenge, message, extra=None):
+    def _send_reply(self, post_id, parent_post_id, author, initiative, challenge, message, extra=None):
         msg = None
-        author_username = self.channel.get_author_username(post)
-        author_id = self.channel.get_author_id(post)
+        author_username = self.channel.get_author_print_name(author.screen_name)
+        author_id = author.id_in_channel
         current_datetime = time.strftime(self.settings['datetime_format'])
         type_msg = ""
-        post_id = self.channel.get_id_post(post)
         short_url = None
 
         if message.category == "thanks_contribution":
@@ -864,7 +896,7 @@ class PostManager():
             msg = message.body % (author_username, current_datetime)
             type_msg = "NT"
         if msg is not None:
-            payload = {'parent_post_id': self.channel.get_parent_post_id(post), 'type_msg': type_msg,
+            payload = {'parent_post_id': parent_post_id, 'type_msg': type_msg,
                        'post_id': post_id, 'initiative_id': initiative.id, 'author_username': author_username,
                        'author_id': author_id, 'campaign_id': challenge.campaign.id, 'challenge_id': challenge.id,
                        'initiative_short_url': short_url}
@@ -920,7 +952,7 @@ class SocialNetwork():
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _send_direct_message(self, message, author_username, payload):
+    def _send_direct_message(self, message, author_id, payload):
         """Send a private message to a particular user"""
         raise NotImplementedError
 
@@ -945,8 +977,8 @@ class SocialNetwork():
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_author_username(self, post):
-        """Get the username (screen-name) of the post author"""
+    def get_author_print_name(self, username):
+        """Get author print name, e.g. username=abc, print name=@abc"""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -1074,7 +1106,7 @@ class SocialNetwork():
                 elif msg_to_dispatch.type == "RE":  # Reply
                     res = self._reply_to(msg_to_dispatch.message_text, msg_to_dispatch.recipient_id, payload_hash)
                 else:  # Direct message
-                    res = self._send_direct_message(msg_to_dispatch.message_text, payload_hash['author_username'], payload_hash)
+                    res = self._send_direct_message(msg_to_dispatch.message_text, payload_hash['author_id'], payload_hash)
                 if res['delivered']:
                     msg_to_dispatch.delete()
                 else:
@@ -1165,12 +1197,12 @@ class Twitter(SocialNetwork):
             logger.error("The post couldn't be delivered. Reason: %s" % reason[0]['message'])
             return {'delivered': False, 'response': reason}
 
-    def _send_direct_message(self, message, author_username, payload):
+    def _send_direct_message(self, message, author_id, payload):
         api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
             message = message.encode("utf-8")
-            response = api.send_direct_message(screen_name=author_username, text=message)
-            logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_username))
+            response = api.send_direct_message(user_id=author_id, text=message)
+            logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_id))
             self.save_post_db(payload, response, self)
             return {'delivered': True, 'response': response}
         except tweepy.TweepError as e:
@@ -1238,8 +1270,8 @@ class Twitter(SocialNetwork):
     def get_author_id(self, post):
         return post.author.id_str
 
-    def get_author_username(self, post):
-        return "@" + post.author.screen_name
+    def get_author_print_name(self, username):
+        return "@" + username
 
     def register_new_author(self, post):
         author_post = post.author
