@@ -438,7 +438,6 @@ class PostManager():
             logger.critical(e_msg)
             raise Exception(e_msg)
 
-    # OK!
     def manage_post(self, post):
         try:
             author_obj = self.channel.get_author_obj(post["author"])
@@ -451,7 +450,6 @@ class PostManager():
             logger.critical("Error when managing the post: %s. Internal message: %s" % (post["text"], e))
             logger.critical(traceback.format_exc())
 
-    # OK!
     def _do_manage(self, post, author_obj):
         parent_post_id = post["parent_id"]
         app_parent_post = None
@@ -542,7 +540,6 @@ class PostManager():
                              "'notification'. The post: '%s' will be ignored" % post["text"])
                 return None
 
-    # OK!
     def _get_parent_post_message(self, text_post, campaign):
         messages = list(campaign.messages.all())
         # Add campaign's extrainfo messages
@@ -558,7 +555,6 @@ class PostManager():
                 return message
         return None
 
-    # OK!
     def _process_extra_info(self, post, author_obj, app_parent_post):
         text_post = post["text"].lower()
         campaign = app_parent_post.campaign
@@ -595,7 +591,6 @@ class PostManager():
                 self._send_reply(post, campaign.initiative, challenge, message)
                 return message
 
-    # OK!
     def _preserve_temporal_post(self, post, author_obj, extra_info, app_parent_post):
         author_obj.set_extra_info(extra_info)
         campaign = app_parent_post.campaign
@@ -607,7 +602,6 @@ class PostManager():
         author_obj.reset_mistake_flags()
         return message
 
-    # OK!
     def _update_contribution(self, post, author_obj, app_parent_post):
         campaign = app_parent_post.campaign
         challenge = app_parent_post.challenge
@@ -641,7 +635,6 @@ class PostManager():
             db_post = db_post.app_parent_post
         return db_post.contribution_parent_post
 
-    # OK!
     def _process_input(self, post, author_obj, challenge):
         author = post["author"]
         curated_input = self._validate_input(post, challenge)
@@ -713,7 +706,6 @@ class PostManager():
                 self._send_reply(post, campaign.initiative, challenge, message)
                 return message
 
-    # OK!
     def _do_process_input(self, post, author_obj, campaign, challenge, curated_input):
         author = post["author"]
         if campaign.extrainfo is None or author_obj.get_extra_info() is not None:
@@ -732,7 +724,6 @@ class PostManager():
                         (curated_input, author["name"], challenge.name))
         return message
 
-    # OK!
     def _validate_input(self, post, challenge):
         curated_text = self._to_unicode(post["text"])
         if challenge.style_answer == self.STRUCTURED_ANSWER:
@@ -752,7 +743,6 @@ class PostManager():
         else:
             return curated_text
 
-    # OK!
     # Check if the participant has already posted an answer to the challenge
     def _has_already_posted(self, author_obj, challenge):
         try:
@@ -760,7 +750,6 @@ class PostManager():
         except ContributionPost.DoesNotExist:
             return None
 
-    # OK!
     def _save_post(self, post, author_obj, curated_input, challenge, temporal):
         channel_obj = self.channel.get_channel_obj()
         campaign = challenge.campaign
