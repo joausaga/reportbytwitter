@@ -130,7 +130,7 @@ class ContributionPostAdmin(admin.ModelAdmin):
 
     def queryset(self, request):
         qs = super(ContributionPostAdmin, self).queryset(request)
-        return qs.filter(category="PE")
+        return qs.filter(status="PE")
 
     def view(self, obj):
         return format_html("<a href=\"" + obj.url + "\" target=\"_blank\">Link</a>")
