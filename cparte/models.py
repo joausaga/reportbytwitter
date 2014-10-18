@@ -186,10 +186,10 @@ class Author(models.Model):
 class Initiative(models.Model):
     name = models.CharField(max_length=100)
     organizer = models.CharField(max_length=50)
-    account = models.ForeignKey(Account)
     hashtag = models.CharField(unique=True, max_length=14, help_text="Max length 14 characters (do not include '#')")
     url = models.URLField(null=True, blank=True)
     language = models.CharField(max_length=3, choices=LANGUAGES)
+    account = models.ForeignKey(Account)
 
     def __unicode__(self):
         return self.name
