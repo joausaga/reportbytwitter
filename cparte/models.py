@@ -14,6 +14,7 @@ import ast
 import os
 import signal
 import traceback
+import ConfigParser
 
 logger = logging.getLogger(__name__)
 
@@ -418,10 +419,10 @@ class PostManager():
     def __init__(self, channel):
         self.channel = channel
         self._set_settings()
-        if settings.SHORT_URL:
+        if self.settings['short_url']:
             self.url_shortener = build(serviceName=self.settings['urlshortener_api_name'],
                                        version=self.settings['urlshortener_api_version'],
-                                       developerKey=settings.URL_SHORTENER_API_KEY)
+                                       developerKey=channel.config.get('url_shortener', 'key'))
         else:
             self.url_shortener = None
 
@@ -432,6 +433,7 @@ class PostManager():
             self.settings['datetime_format'] = Setting.objects.get(name="datetime_format").value
             self.settings['urlshortener_api_name'] = Setting.objects.get(name="gurlshortener_api_name").value
             self.settings['urlshortener_api_version'] = Setting.objects.get(name="gurlshortener_api_version").value
+            self.settings['short_url'] = Setting.object.get(name="short_url").get_casted_value()
         except Setting.DoesNotExist as e:
             e_msg = "Unknown setting %s, the post manager cannot be started" % e
             logger.critical(e_msg)
@@ -1091,10 +1093,12 @@ class Twitter(SocialNetwork):
 
     def __init__(self):
         self.channel = Channel.objects.get(name="twitter")
+        self.config = ConfigParser.ConfigParser()
+        self.config.read('config')
 
     def authenticate(self):
-        self.auth_handler = tweepy.OAuthHandler(settings.TWITTER_CONSUMER_KEY, settings.TWITTER_CONSUMER_SECRET)
-        self.auth_handler.set_access_token(settings.TWITTER_ACCESS_TOKEN, settings.TWITTER_ACCESS_TOKEN_SECRET)
+        self.auth_handler = tweepy.OAuthHandler(self.config.get('twitter_api','consumer_key'), self.config.get('twitter_api','consumer_secret'))
+        self.auth_handler.set_access_token(self.config.get('twitter_api','token'), self.config.get('twitter_api','token_secret'))
 
     def listen(self):
         manager = PostManager(self)

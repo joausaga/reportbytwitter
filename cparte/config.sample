@@ -1,0 +1,9 @@
+[url_shortener]
+short = True
+key = your_url_shorterner_service_key
+
+[twitter_api]
+consumer_key = your_api_key
+consumer_secret = your_api_secret
+token = your_access_token
+token_secret = your_access_secret
