@@ -16,7 +16,6 @@ import signal
 import traceback
 
 logger = logging.getLogger(__name__)
-#logger = multiprocessing.get_logger()
 
 
 """ Data Models
