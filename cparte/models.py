@@ -433,7 +433,7 @@ class PostManager():
             self.settings['datetime_format'] = Setting.objects.get(name="datetime_format").value
             self.settings['urlshortener_api_name'] = Setting.objects.get(name="gurlshortener_api_name").value
             self.settings['urlshortener_api_version'] = Setting.objects.get(name="gurlshortener_api_version").value
-            self.settings['short_url'] = Setting.object.get(name="short_url").get_casted_value()
+            self.settings['short_url'] = Setting.objects.get(name="short_url").get_casted_value()
         except Setting.DoesNotExist as e:
             e_msg = "Unknown setting %s, the post manager cannot be started" % e
             logger.critical(e_msg)
@@ -1094,7 +1094,7 @@ class Twitter(SocialNetwork):
     def __init__(self):
         self.channel = Channel.objects.get(name="twitter")
         self.config = ConfigParser.ConfigParser()
-        self.config.read('config')
+        self.config.read('cparte/config')
 
     def authenticate(self):
         self.auth_handler = tweepy.OAuthHandler(self.config.get('twitter_api','consumer_key'), self.config.get('twitter_api','consumer_secret'))
