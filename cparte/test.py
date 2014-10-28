@@ -1,6 +1,7 @@
 from django.test import TestCase
 from cparte.models import PostManager, Twitter, Setting
-from django.conf import settings
+import ConfigParser
+import re
 
 import tweepy
 
@@ -8,10 +9,12 @@ import tweepy
 class TwitterTestCase(TestCase):
     fixtures = ['cparte.json']
     url = "https://twitter.com/"
+    config = ConfigParser.ConfigParser()
+    config.read('cparte/config')
 
     def setUp(self):
-        auth = tweepy.OAuthHandler(settings.TWITTER_CONSUMER_KEY, settings.TWITTER_CONSUMER_SECRET)
-        auth.set_access_token(settings.TWITTER_ACCESS_TOKEN, settings.TWITTER_ACCESS_TOKEN_SECRET)
+        auth = tweepy.OAuthHandler(self.config.get('twitter_api','consumer_key'), self.config.get('twitter_api','consumer_secret'))
+        auth.set_access_token(self.config.get('twitter_api','token'), self.config.get('twitter_api','token_secret'))
         api = tweepy.API(auth)
         api.retry_count = 2
         api.retry_delay = 5
@@ -50,18 +53,39 @@ class TwitterTestCase(TestCase):
                     tweet['status'] = status
 
     def to_dict(self, status):
-        author = status.author
-        status_dict = {"id": status.id_str, "text": status.text, "parent_id": status.in_reply_to_status_id_str,
-                       "datetime": status.created_at, "url": self.build_url_post(status), "votes": 0,
-                       "re_posts": status.retweet_count, "bookmarks": status.favorite_count,
-                       "hashtags": self.build_hashtags_array(status),
-                       "author": {"id": author.id_str, "name": author.name, "screen_name": author.screen_name,
-                                  "print_name": "@" + author.screen_name, "url": self.url + author.screen_name,
-                                  "description": author.description, "language": author.lang,
-                                  "posts_count": author.statuses_count, "friends": author.friends_count,
-                                  "followers": author.followers_count, "groups": author.listed_count}
-                       }
+        try:
+            if status.retweeted_status:
+                retweet = self.get_tweet_dict(status.retweeted_status)
+            else:
+                retweet = None
+        except AttributeError:
+            retweet = None
+        status_dict = self.get_tweet_dict(status)
+        status_dict["org_post"] = retweet
+
         return status_dict
+
+    def get_tweet_dict(self, status):
+        author = status.author
+        # Extract tweet source
+        source = re.sub("(<[a|A][^>]*>|</[a|A]>)", "", status.source)
+        # Source is equal to Twitter for Websites if the tweet was posted through twitter social sharing button
+        if source == "Twitter for Websites":
+            through_sharing_button = True
+        else:
+            through_sharing_button = False
+
+        return {"id": status.id_str, "text": status.text, "parent_id": status.in_reply_to_status_id_str,
+                "datetime": status.created_at, "url": self.build_url_post(status), "votes": 0,
+                "re_posts": status.retweet_count, "bookmarks": status.favorite_count,
+                "hashtags": self.build_hashtags_array(status), "source": source,
+                "sharing_post": through_sharing_button,
+                "author": {"id": author.id_str, "name": author.name, "screen_name": author.screen_name,
+                           "print_name": "@" + author.screen_name, "url": self.url + author.screen_name,
+                           "description": author.description, "language": author.lang,
+                           "posts_count": author.statuses_count, "friends": author.friends_count,
+                           "followers": author.followers_count, "groups": author.listed_count}
+                }
 
     def build_url_post(self, status):
         return self.url + status.author.screen_name + "/status/" + status.id_str

@@ -1,6 +1,5 @@
 from django.db import models
 from django.utils import timezone
-from django.conf import settings
 from django.db import connection
 from apiclient.discovery import build
 import multiprocessing
@@ -190,6 +189,8 @@ class Initiative(models.Model):
     url = models.URLField(null=True, blank=True)
     language = models.CharField(max_length=3, choices=LANGUAGES)
     account = models.ForeignKey(Account)
+    social_sharing_message = models.CharField(max_length=200, blank=True, null=True,
+                                              help_text="Default text for social sharing buttons")
 
     def __unicode__(self):
         return self.name
@@ -245,6 +246,7 @@ class ContributionPost(models.Model):
     bookmarks = models.IntegerField(default=0)  # e.g. Favourite in Twitter
     STATUS = (('TE', 'Temporal'), ('PE', 'Permanent'), ('DI', 'Discarded'))
     status = models.CharField(max_length=3, choices=STATUS)
+    source = models.CharField(max_length=100, null=True)
 
     def __unicode__(self):
         return self.url
@@ -294,6 +296,22 @@ class AppPost(models.Model):
     def do_answer(self):
         self.answered = True
         self.save()
+
+
+class SharePost(models.Model):
+    id_in_channel = models.CharField(max_length=50)
+    datetime = models.DateTimeField()
+    text = models.TextField()
+    url = models.URLField()
+    author = models.ForeignKey(Author)
+    initiative = models.ForeignKey(Initiative)
+    campaign = models.ForeignKey(Campaign)
+    challenge = models.ForeignKey(Challenge)
+    channel = models.ForeignKey(Channel)
+    votes = models.IntegerField(default=0)      # e.g. +1 in Google+, like in Facebook
+    re_posts = models.IntegerField(default=0)   # e.g. Share in Facebook, RT in Twitter
+    bookmarks = models.IntegerField(default=0)  # e.g. Favourite in Twitter
+    similarity = models.IntegerField(default=0)
 
 
 class MsgQueue(models.Model):
@@ -457,11 +475,38 @@ class PostManager():
         author_id = post["author"]["id"]
         if parent_post_id is None:
             if author_id in self.channel.get_account_ids():
-                return None  # So far, I'm not interested in processing posts authored by the accounts bound to the app
+                return None  # So far, we're not interested in processing posts authored by the accounts bound to the app
             else:
                 initiative = self.channel.has_initiative_hashtags(post)
                 within_initiative = True if initiative else False
-                challenge = self.channel.get_challenge_info(post, initiative) if within_initiative else None
+                if within_initiative:
+                    challenge = self.channel.get_challenge_info(post, initiative)
+                    if challenge:
+                        if post["sharing_post"]:
+                            # Save sharing post if it wasn't already saved
+                            self._save_sharing_post(post, author_obj, challenge)
+                            logger.info("The social sharing post '%s' was saved" % post["text"])
+                            return None  # We're not interested in processing posts placed through the social sharing buttons
+                        else:
+                            # Check if the post is a re-post and if the original post's text correspond to the
+                            # initiative's social sharing button message
+                            if post["org_post"]:
+                                if self._contains_social_sharing_msg(post["org_post"], initiative):
+                                    logger.info("A social sharing post was re-posted!")
+                                    return None  # So far, we're not interested in processing re-posted sharing posts
+                            else:
+                                if self._contains_social_sharing_msg(post, initiative):
+                                    # We want only the "new text" contained in the post, so we can remove the part
+                                    # corresponding to the predefined social sharing message
+                                    attached_txt = self._extract_attached_txt(initiative.social_sharing_message, post["text"])
+                                    len_attached_txt = len(attached_txt)
+                                    if len_attached_txt > 0:
+                                        post["text"] = attached_txt
+                                    else:
+                                        logger.info("There is none text attached to the social sharing msg")
+                                        return None
+                else:
+                    challenge = None
         else:
             try:
                 # Searching for the post in the app db
@@ -472,7 +517,13 @@ class PostManager():
                                     app_parent_post.app_parent_post is None
                 challenge = app_parent_post.challenge if within_initiative else None
             except AppPost.DoesNotExist:
-                return None  # I'm not interested in processing replies that were not posted to the app posts
+                # Check if the post is a reply to social sharing post
+                try:
+                    social_sharing_post = SharePost.objects.get(id_in_channel=parent_post_id)
+                    within_initiative = True
+                    challenge = social_sharing_post.challenge
+                except SharePost.DoesNotExist:
+                    return None  # We're not interested in processing replies that were not posted to the app posts
 
         if within_initiative and challenge:
             if author_obj is None:
@@ -764,7 +815,8 @@ class PostManager():
                                         contribution=curated_input, full_text=post["text"], url=post["url"],
                                         author=author_obj, in_reply_to=post["parent_id"], initiative=initiative,
                                         campaign=campaign, challenge=challenge, channel=channel_obj, votes=post["votes"],
-                                        re_posts=post["re_posts"], bookmarks=post["bookmarks"], status=status)
+                                        re_posts=post["re_posts"], bookmarks=post["bookmarks"], status=status,
+                                        source=post["source"])
         post_to_save.save(force_insert=True)
         if not temporal:
             self._discard_temporal_post(author_obj, challenge)
@@ -875,6 +927,67 @@ class PostManager():
             if not isinstance(obj, unicode):
                 obj = unicode(obj, encoding)
         return obj
+
+    # Check whether the post contains at least an 'x' percentage of the social sharing message words.
+    def _contains_social_sharing_msg(self, post, initiative):
+        # It determines the minimum percentage of words that the 2 texts must share to be considered similar
+        similarity_per = 60
+
+        if initiative.social_sharing_message:
+            similarity_factor = self._calculate_text_similarity(initiative.social_sharing_message, post["text"])
+            if similarity_factor >= similarity_per:
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    # Take two texts and calculate their similarity based on the percentage of words they share
+    def _calculate_text_similarity(self, text1, text2):
+        similarity_counter = 0
+        len_text1 = len(text1.split())
+        text1 = self._to_unicode(text1).lower()
+        text2 = self._to_unicode(text2).lower()
+
+        for word_post in text2.split():
+            for word_def in text1.split():
+                if word_post == word_def:
+                    similarity_counter += 1
+                    break
+
+        return (similarity_counter * 100) / len_text1
+
+    # Extract the attached text from the original post
+    def _extract_attached_txt(self, txt_org_post, txt_repost):
+        new_txt = ""
+
+        for word_repost in txt_repost.split():
+            found = False
+            for word_org in txt_org_post.split():
+                if self._to_unicode(word_org) == self._to_unicode(word_repost):
+                    found = True
+                    break
+            if not found:
+                new_txt += word_repost + " "
+        new_txt = new_txt.strip()  # Remove trailing space
+
+        return new_txt
+
+    def _save_sharing_post(self, post, author_obj, challenge):
+        if not SharePost.objects.filter(id_in_channel=post["id"]).exists():
+            if author_obj is None:
+                author_obj = self.channel.register_new_author(post["author"])
+            channel_obj = self.channel.get_channel_obj()
+            campaign = challenge.campaign
+            initiative = campaign.initiative
+            similarity = self._calculate_text_similarity(initiative.social_sharing_message, post["text"])
+            post_to_save = SharePost(id_in_channel=post["id"],
+                                     datetime=timezone.make_aware(post["datetime"], timezone.get_default_timezone()),
+                                     text=post["text"], url=post["url"],
+                                     author=author_obj, initiative=initiative,
+                                     campaign=campaign, challenge=challenge, channel=channel_obj, votes=post["votes"],
+                                     re_posts=post["re_posts"], bookmarks=post["bookmarks"], similarity=similarity)
+            post_to_save.save(force_insert=True)
 
 
 class SocialNetwork():
@@ -1064,7 +1177,10 @@ class SocialNetwork():
         challenge = Challenge.objects.get(pk=payload['challenge_id'])
         recipient_id = payload['author_id']
         if parent_post_id is not None:
-            app_parent_post = AppPost.objects.get(id_in_channel=parent_post_id)
+            try:
+                app_parent_post = AppPost.objects.get(id_in_channel=parent_post_id)
+            except AppPost.DoesNotExist:
+                app_parent_post = None
         else:
             app_parent_post = None
         try:
@@ -1186,17 +1302,15 @@ class TwitterListener(tweepy.StreamListener):
         self.manager = manager
 
     def on_status(self, status):
-        author = status.author
-        status_dict = {"id": status.id_str, "text": status.text, "parent_id": status.in_reply_to_status_id_str,
-                       "datetime": status.created_at, "url": self.build_url_post(status), "votes": 0,
-                       "re_posts": status.retweet_count, "bookmarks": status.favorite_count,
-                       "hashtags": self.build_hashtags_array(status),
-                       "author": {"id": author.id_str, "name": author.name, "screen_name": author.screen_name,
-                                  "print_name": "@" + author.screen_name, "url": self.url + author.screen_name,
-                                  "description": author.description, "language": author.lang,
-                                  "posts_count": author.statuses_count, "friends": author.friends_count,
-                                  "followers": author.followers_count, "groups": author.listed_count}
-                       }
+        try:
+            if status.retweeted_status:
+                retweet = self.get_tweet_dict(status.retweeted_status)
+            else:
+                retweet = None
+        except AttributeError:
+            retweet = None
+        status_dict = self.get_tweet_dict(status)
+        status_dict["org_post"] = retweet
         self.manager.manage_post(status_dict)
         return True
 
@@ -1207,6 +1321,28 @@ class TwitterListener(tweepy.StreamListener):
     def on_timeout(self):
         logger.warning("Got timeout from the firehose")
         return True  # To continue listening
+
+    def get_tweet_dict(self, status):
+        author = status.author
+        # Extract tweet source
+        source = re.sub("(<[a|A][^>]*>|</[a|A]>)", "", status.source)
+        # Source is equal to Twitter for Websites if the tweet was posted through twitter social sharing button
+        if source == "Twitter for Websites":
+            through_sharing_button = True
+        else:
+            through_sharing_button = False
+
+        return {"id": status.id_str, "text": status.text, "parent_id": status.in_reply_to_status_id_str,
+                "datetime": status.created_at, "url": self.build_url_post(status), "votes": 0,
+                "re_posts": status.retweet_count, "bookmarks": status.favorite_count,
+                "hashtags": self.build_hashtags_array(status), "source": source,
+                "sharing_post": through_sharing_button,
+                "author": {"id": author.id_str, "name": author.name, "screen_name": author.screen_name,
+                           "print_name": "@" + author.screen_name, "url": self.url + author.screen_name,
+                           "description": author.description, "language": author.lang,
+                           "posts_count": author.statuses_count, "friends": author.friends_count,
+                           "followers": author.followers_count, "groups": author.listed_count}
+                }
 
     def build_url_post(self, status):
         return self.url + status.author.screen_name + "/status/" + status.id_str

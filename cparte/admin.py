@@ -42,6 +42,19 @@ class InitiativeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'organizer', 'hashtag', 'account', 'url', 'language')
     ordering = ('id',)
 
+    def save_model(self, request, obj, form, change):
+        if obj.social_sharing_message is not None:
+            if obj.account.channel.max_length_msgs is None:
+                obj.save()
+            else:
+                if len(obj.social_sharing_message) <= obj.account.channel.max_length_msgs:
+                    obj.save()
+                else:
+                    raise Exception("The social sharing message must not be longer than the maximum length of the "
+                                    "channel %s associated to the account" % obj.account.channel.name)
+        else:
+            obj.save()
+
 
 class SettingAdmin(admin.ModelAdmin):
     list_display = ('id','name', 'description', 'value')
@@ -91,7 +104,7 @@ class MessageInfoAdmin(admin.ModelAdmin):
 
 class AppPostAdmin(admin.ModelAdmin):
     fieldsets = [
-        (None,        {'fields': ['text', 'initiative', 'campaign', 'challenge', 'channel', 'category']})
+        (None,{'fields': ['text', 'initiative', 'campaign', 'challenge', 'channel', 'category']})
     ]
     list_display = ('id','datetime', 'text', 'channel', 'url', 'initiative', 'campaign', 'challenge')
     ordering = ('datetime',)
@@ -115,6 +128,7 @@ class AppPostAdmin(admin.ModelAdmin):
                            'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id}
                 payload_json = json.dumps(payload)
                 social_network.queue_message(message=obj.text, type_msg="PU", payload=payload_json)
+                obj.save()
             else:
                 raise Exception("The length of the message exceed the channel's limit (%s) for messages" % ch.max_length_msgs)
         else:
