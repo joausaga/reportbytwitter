@@ -23,6 +23,8 @@ Quick start
 
 3. Run `python manage.py syncdb` to create cparte database schema.
 
+4. Load initial settings `python manage.py loaddata config_data.json`
+
 Dependencies
 ------------
 
