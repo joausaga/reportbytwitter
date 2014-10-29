@@ -39,7 +39,7 @@ class CampaignAdmin(admin.ModelAdmin):
 
 
 class InitiativeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'organizer', 'hashtag', 'account', 'url', 'language')
+    list_display = ('id', 'name', 'organizer', 'hashtag', 'account', 'url', 'language', 'social_sharing_message')
     ordering = ('id',)
 
     def save_model(self, request, obj, form, change):
@@ -137,7 +137,7 @@ class AppPostAdmin(admin.ModelAdmin):
 
 class ContributionPostAdmin(admin.ModelAdmin):
     list_display = ('datetime', 'author', 'zipcode', 'contribution', 'full_text', 'initiative', 'campaign', 'challenge',
-                    'channel', 'vote', 're_posts', 'bookmarks', 'source', 'view')
+                    'channel', 'votes', 're_posts', 'bookmarks', 'source', 'view')
     list_display_links = ('contribution',)
     ordering = ('datetime',)
     list_filter = ['initiative', 'campaign', 'challenge', 'channel']
@@ -205,13 +205,16 @@ class ChallengeAdmin(admin.ModelAdmin):
 
 
 class SharePostAdmin(admin.ModelAdmin):
-    list_display = ('id','datetime', 'text', 'channel', 'url', 'initiative', 'vote', 're_posts', 'bookmarks', 'source',
-                    'view')
+    list_display = ('id','datetime', 'text', 'channel', 'url', 'initiative', 'votes', 're_posts', 'bookmarks',
+                    'similarity', 'view')
     ordering = ('datetime',)
     list_filter = ['initiative', 'channel']
 
     def view(self, obj):
         return format_html("<a href=\"" + obj.url + "\" target=\"_blank\">Link</a>")
+
+    def has_add_permission(self, request):
+        return False
 
 admin.site.register(Initiative, InitiativeAdmin)
 admin.site.register(Campaign, CampaignAdmin)
@@ -223,3 +226,4 @@ admin.site.register(AppPost, AppPostAdmin)
 admin.site.register(ContributionPost, ContributionPostAdmin)
 admin.site.register(Account, AccountAdmin)
 admin.site.register(Challenge, ChallengeAdmin)
+admin.site.register(SharePost, SharePostAdmin)
