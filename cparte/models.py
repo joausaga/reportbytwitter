@@ -37,18 +37,23 @@ class Channel(models.Model):
     max_length_msgs = models.IntegerField(null=True, blank=True, help_text="Maximum length of messages to send through"
                                                                            "this channel from the application. Leave it"
                                                                            " blank for unlimited lengths.")
+    pid = models.IntegerField(default=-1, editable=False)
+    pid_messenger = models.IntegerField(default=-1, editable=False, null=True)  # Temporal, see another solution
 
     def __unicode__(self):
         return self.name
 
-    def on(self):
+    def on(self, pid, pid_messenger):
         self.status = True
+        self.pid = pid
+        self.pid_messenger = pid_messenger
         self.save()
 
     def off(self):
         self.status = False
+        self.pid = -1
+        self.pid_messenger = -1
         self.save()
-
 
 class Account(models.Model):
     owner = models.CharField(max_length=50)
@@ -330,7 +335,6 @@ class MsgQueue(models.Model):
 
     def __unicode__(self):
         return self.message_text
-
 
 """ Domain Models
 """
@@ -1002,8 +1006,6 @@ class SocialNetwork():
     hashtags = None
     MSG_DUPLICATE_CODE = 187
     channel = None
-    pid_messenger = None
-    pid_listener = None
 
     @abc.abstractmethod
     def authenticate(self):
@@ -1093,24 +1095,30 @@ class SocialNetwork():
         return None
 
     def disconnect(self):
-        # Kill process that manages the message queue
-        try:
-            os.kill(self.pid_messenger, signal.SIGKILL)
-            logger.info("Messenger has been stopped")
-        except Exception as e:
-            logger.error("An error occurs trying to kill the process that runs the messenger. Internal message: %s" % e)
-        # Kill the process that listens Twitter's stream
-        try:
-            os.kill(self.pid_listener, signal.SIGKILL)
-            logger.info("Listener has been stopped")
-        except Exception as e:
-            logger.error("An error occurs trying to kill the process that runs the listener. Internal message: %s" % e)
-        # Flag that the channel is off-line
-        self.channel.off()
-        self.pid_messenger = None
-        self.pid_listener = None
+        if self.channel.status:
+            if self.channel.pid_messenger != -1:
+            # Kill process that manages the message queue
+                try:
+                    os.kill(self.channel.pid_messenger, signal.SIGKILL)
+                    logger.info("Messenger has been stopped")
+                except Exception as e:
+                    logger.error("An error occurs trying to kill the process that runs the messenger. Internal message: "
+                                 "%s" % e)
+            if self.channel.pid != -1:
+                # Kill the process that listens Twitter's stream
+                try:
+                    os.kill(self.channel.pid, signal.SIGKILL)
+                    logger.info("Listener has been stopped")
+                except Exception as e:
+                    logger.error("An error occurs trying to kill the process that runs the listener. Internal message: "
+                                 "%s" % e)
+            # Flag that the channel is off-line
+            self.channel.off()
+        else:
+            logger.info("Channel already off!")
 
     def set_initiatives(self, initiative_ids):
+        account_ids = []
         for id_initiative in initiative_ids:
             try:
                 initiative = Initiative.objects.get(pk=id_initiative)
@@ -1122,11 +1130,10 @@ class SocialNetwork():
             if self.initiatives:
                 self.initiatives.append(initiative)
                 self.hashtags.append(initiative.hashtag)
-                account_ids.append(initiative.account.id)
             else:
                 self.initiatives = [initiative]
                 self.hashtags = [initiative.hashtag]
-                account_ids = [initiative.account.id]
+            account_ids.append(initiative.account.id)
 
             # Add to the array of hashtags the hashtags of the initiative's campaigns
             for campaign in initiative.campaign_set.all():
@@ -1239,15 +1246,13 @@ class Twitter(SocialNetwork):
         proc_listener = multiprocessing.Process(target=stream.filter, args=[self.accounts, self.hashtags])
         connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
         proc_listener.start()
-        self.pid_listener = proc_listener.pid
         logger.info("Starting to listen Twitter Stream")
         # Spawn off a process that manages the queue of messages to send
         proc_messenger = multiprocessing.Process(target=self.run_msg_dispatcher)
         connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
         proc_messenger.start()
-        self.pid_messenger = proc_messenger.pid
         logger.info("Message Dispatcher on")
-        self.channel.on()
+        self.channel.on(proc_listener.pid, proc_messenger.pid)
 
     def _post_public(self, message, payload):
         auth_writer = self.auth_initiative_writer(payload["initiative_id"])
