@@ -140,7 +140,8 @@ class AppPostAdmin(admin.ModelAdmin):
                 social_network.queue_message(message=obj.text, type_msg="PU", payload=payload_json)
                 obj.save()
             else:
-                raise Exception("The length of the message exceed the channel's limit (%s) for messages" % ch.max_length_msgs)
+                self.message_user(request, "The length of the message exceed the channel's limit (%s) for messages" %
+                                  ch.max_length_msgs, level=messages.ERROR)
         else:
             raise Exception("The social network object couldn't be created")
 
