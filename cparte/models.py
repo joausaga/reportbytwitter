@@ -56,6 +56,10 @@ class Account(models.Model):
     handler = models.CharField(max_length=50)
     url = models.URLField()
     channel = models.ForeignKey(Channel)
+    consumer_key = models.CharField(max_length=100)
+    consumer_secret = models.CharField(max_length=100)
+    token = models.CharField(max_length=100)
+    token_secret = models.CharField(max_length=100)
 
     def __unicode__(self):
         return self.owner
@@ -1046,6 +1050,11 @@ class SocialNetwork():
         """Transform post object into a dictionary"""
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def auth_initiative_writer(self, initiative_id):
+        """Authenticate post writer"""
+        raise NotImplementedError
+
     # Return the object of the post author
     def get_author_obj(self, author):
         try:
@@ -1113,9 +1122,12 @@ class SocialNetwork():
             if self.initiatives:
                 self.initiatives.append(initiative)
                 self.hashtags.append(initiative.hashtag)
+                account_ids.append(initiative.account.id)
             else:
                 self.initiatives = [initiative]
                 self.hashtags = [initiative.hashtag]
+                account_ids = [initiative.account.id]
+
             # Add to the array of hashtags the hashtags of the initiative's campaigns
             for campaign in initiative.campaign_set.all():
                 if campaign.hashtag is not None:
@@ -1123,6 +1135,8 @@ class SocialNetwork():
                 # Add to the array of hashtags the hashtags of the campaign's challenges
                 for challenge in campaign.challenge_set.all():
                     self.hashtags.append(challenge.hashtag)
+
+        self.set_accounts(account_ids)
 
     def set_accounts(self, account_ids):
         self.accounts = []
@@ -1236,43 +1250,49 @@ class Twitter(SocialNetwork):
         self.channel.on()
 
     def _post_public(self, message, payload):
-        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
-        try:
-            response = api.update_status(status=message)
-            logger.info("The post '%s' has been published through Twitter" % message)
-            response_dict = self.to_dict(response)
-            self.save_post_db(payload, response_dict, self)
-            return {'delivered': True, 'response': response}
-        except tweepy.TweepError as e:
-            reason = ast.literal_eval(e.reason)
-            logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
-            return {'delivered': False, 'response': reason}
+        auth_writer = self.auth_initiative_writer(payload["initiative_id"])
+        if auth_writer:
+            api = tweepy.API(auth_handler=auth_writer, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+            try:
+                response = api.update_status(status=message)
+                logger.info("The post '%s' has been published through Twitter" % message)
+                response_dict = self.to_dict(response)
+                self.save_post_db(payload, response_dict, self)
+                return {'delivered': True, 'response': response}
+            except tweepy.TweepError as e:
+                reason = ast.literal_eval(e.reason)
+                logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
+                return {'delivered': False, 'response': reason}
 
     def _send_direct_message(self, message, author_id, payload):
-        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
-        try:
-            response = api.send_direct_message(user_id=author_id, text=message)
-            logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_id))
-            response_dict = self.to_dict(response)
-            self.save_post_db(payload, response_dict, self)
-            return {'delivered': True, 'response': response}
-        except tweepy.TweepError as e:
-            reason = ast.literal_eval(e.reason)
-            logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
-            return {'delivered': False, 'response': reason}
+        auth_writer = self.auth_initiative_writer(payload["initiative_id"])
+        if auth_writer:
+            api = tweepy.API(auth_handler=auth_writer, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+            try:
+                response = api.send_direct_message(user_id=author_id, text=message)
+                logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_id))
+                response_dict = self.to_dict(response)
+                self.save_post_db(payload, response_dict, self)
+                return {'delivered': True, 'response': response}
+            except tweepy.TweepError as e:
+                reason = ast.literal_eval(e.reason)
+                logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
+                return {'delivered': False, 'response': reason}
 
     def _reply_to(self, message, id_post, payload):
-        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
-        try:
-            response = api.update_status(status=message, in_reply_to_status_id=id_post)
-            logger.info("The post '%s' has been sent to %s through Twitter" % (message, payload['author_username']))
-            response_dict = self.to_dict(response)
-            self.save_post_db(payload, response_dict, self)
-            return {'delivered': True, 'response': response}
-        except tweepy.TweepError as e:
-            reason = ast.literal_eval(e.reason)
-            logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
-            return {'delivered': False, 'response': reason}
+        auth_writer = self.auth_initiative_writer(payload["initiative_id"])
+        if auth_writer:
+            api = tweepy.API(auth_handler=auth_writer, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+            try:
+                response = api.update_status(status=message, in_reply_to_status_id=id_post)
+                logger.info("The post '%s' has been sent to %s through Twitter" % (message, payload['author_username']))
+                response_dict = self.to_dict(response)
+                self.save_post_db(payload, response_dict, self)
+                return {'delivered': True, 'response': response}
+            except tweepy.TweepError as e:
+                reason = ast.literal_eval(e.reason)
+                logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
+                return {'delivered': False, 'response': reason}
 
     def get_post(self, id_post):
         api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
@@ -1293,6 +1313,16 @@ class Twitter(SocialNetwork):
         return {"id": post.id_str, "text": post.text,
                 "url": self.channel.url + post.author.screen_name + "/status/" + post.id_str}
 
+    def auth_initiative_writer(self, initiative_id):
+        try:
+            ini = Initiative.objects.get(pk=initiative_id)
+            auth_handler = tweepy.OAuthHandler(ini.account.consumer_key, ini.account.consumer_secret)
+            auth_handler.set_access_token(ini.account.token, ini.account.token_secret)
+            return auth_handler
+        except Initiative.DoesNotExist:
+            logger.error("Couldn't find the initiative. The initiative writer couldn't be authenticated so the message "
+                         "won't be delivered")
+            return None
 
 class TwitterListener(tweepy.StreamListener):
     manager = None
