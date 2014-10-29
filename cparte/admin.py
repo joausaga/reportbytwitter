@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.conf import settings
 from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter, \
-                          ContributionPost, Account, MetaChannel
+                          ContributionPost, Account, MetaChannel, SharePost
 
 import logging
 import json
@@ -136,8 +136,8 @@ class AppPostAdmin(admin.ModelAdmin):
 
 
 class ContributionPostAdmin(admin.ModelAdmin):
-    list_display = ('datetime', 'author', 'zipcode', 'contribution', 'full_text', 'initiative', 'campaign', 'challenge', 'channel',
-                    'view')
+    list_display = ('datetime', 'author', 'zipcode', 'contribution', 'full_text', 'initiative', 'campaign', 'challenge',
+                    'channel', 'vote', 're_posts', 'bookmarks', 'source', 'view')
     list_display_links = ('contribution',)
     ordering = ('datetime',)
     list_filter = ['initiative', 'campaign', 'challenge', 'channel']
@@ -203,6 +203,15 @@ class ChallengeAdmin(admin.ModelAdmin):
     def initiative(self, obj):
         return obj.campaign.initiative.name
 
+
+class SharePostAdmin(admin.ModelAdmin):
+    list_display = ('id','datetime', 'text', 'channel', 'url', 'initiative', 'vote', 're_posts', 'bookmarks', 'source',
+                    'view')
+    ordering = ('datetime',)
+    list_filter = ['initiative', 'channel']
+
+    def view(self, obj):
+        return format_html("<a href=\"" + obj.url + "\" target=\"_blank\">Link</a>")
 
 admin.site.register(Initiative, InitiativeAdmin)
 admin.site.register(Campaign, CampaignAdmin)
