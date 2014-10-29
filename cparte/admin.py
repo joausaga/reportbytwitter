@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.conf import settings
+from django.contrib import messages
 from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter, \
                           ContributionPost, Account, MetaChannel, SharePost
 
@@ -50,8 +51,11 @@ class InitiativeAdmin(admin.ModelAdmin):
                 if len(obj.social_sharing_message) <= obj.account.channel.max_length_msgs:
                     obj.save()
                 else:
-                    raise Exception("The social sharing message must not be longer than the maximum length of the "
-                                    "channel %s associated to the account" % obj.account.channel.name)
+                    self.message_user(request,
+                                      "The social sharing message must not be longer than %s characters, which is "
+                                      "maximum length allowed by the channel %s associated to the account" %
+                                      (obj.account.channel.max_length_msgs, obj.account.channel.name),
+                                      level=messages.ERROR)
         else:
             obj.save()
 
@@ -89,17 +93,23 @@ class MessageInfoAdmin(admin.ModelAdmin):
         if obj.channel.max_length_msgs is None or len(obj.body) <= obj.channel.max_length_msgs:
             msg = obj.body.split()
             key_terms = obj.key_terms.split()
+            not_found_term = ""
             for term in key_terms:
                 found = False
                 for word in msg:
                     if term.lower() == word.lower():
                         found = True
                 if not found:
-                    raise Exception("The key term: %s is not included in the message" % term)
-            obj.save()
+                    not_found_term = term
+                    break
+            if not_found_term:
+                self.message_user(request, "The key term: %s is not included in the message" % not_found_term,
+                                  level=messages.ERROR)
+            else:
+                obj.save()
         else:
-            raise Exception("The limit of the message body cannot exceed the channel's length for messages %s" %
-                            obj.channel.max_length_msgs)
+            self.message_user(request, "The limit of the message body cannot exceed the channel's length for messages "
+                                       "%s" % obj.channel.max_length_msgs, level=messages.ERROR)
 
 
 class AppPostAdmin(admin.ModelAdmin):
