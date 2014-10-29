@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.db import connection
+from django.conf import settings
 from apiclient.discovery import build
 import multiprocessing
 import tweepy
@@ -1210,7 +1211,7 @@ class Twitter(SocialNetwork):
     def __init__(self):
         self.channel = Channel.objects.get(name="twitter")
         self.config = ConfigParser.ConfigParser()
-        self.config.read('cparte/config')
+        self.config.read(os.path.join(settings.BASE_DIR, "cparte/config"))
 
     def authenticate(self):
         self.auth_handler = tweepy.OAuthHandler(self.config.get('twitter_api','consumer_key'), self.config.get('twitter_api','consumer_secret'))
