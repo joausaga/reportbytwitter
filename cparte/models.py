@@ -1350,8 +1350,29 @@ class TwitterListener(tweepy.StreamListener):
         self.manager.manage_post(status_dict)
         return True
 
-    def on_error(self, status_code):
-        logger.error("Error in the firehose, status code: %s" % str(status_code))
+    def on_error(self, error_code):
+        url_error_explanations = "https://dev.twitter.com/streaming/overview/connecting"
+        error_title = ""
+
+        if error_code == 401:
+            error_title = "Unauthorized"
+        elif error_code == 403:
+            error_title = "Forbidden"
+        elif error_code == 404:
+            error_title = "Unknown"
+        elif error_code == 406:
+            error_title = "Not Acceptable"
+        elif error_code == 413:
+            error_title = "Too Long"
+        elif error_code == 416:
+            error_title = "Range Unacceptable"
+        elif error_code == 420:
+            error_title = "Rate Limited"
+        elif error_code == 503:
+            error_title = "Service Unavailable"
+
+        logger.error("Error %s (%s) in the firehose. For further explanation check: %s" %
+                     (str(error_code), error_title, url_error_explanations))
         return True  # To continue listening
 
     def on_timeout(self):
