@@ -131,7 +131,6 @@ class AppPostAdmin(admin.ModelAdmin):
             raise Exception("Unknown channel named %s" % obj.channel.name)
 
         if social_network:
-            social_network.authenticate()
             if len(obj.text) <= ch.max_length_msgs:
                 payload = {'parent_post_id': None, 'type_msg': obj.category,
                            'post_id': None, 'initiative_id': obj.initiative.id,
