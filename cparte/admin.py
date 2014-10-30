@@ -135,7 +135,8 @@ class AppPostAdmin(admin.ModelAdmin):
             if len(obj.text) <= ch.max_length_msgs:
                 payload = {'parent_post_id': None, 'type_msg': obj.category,
                            'post_id': None, 'initiative_id': obj.initiative.id,
-                           'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id}
+                           'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id,
+                           'author_id': None, 'initiative_short_url': None}
                 payload_json = json.dumps(payload)
                 social_network.queue_message(message=obj.text, type_msg="PU", payload=payload_json)
             else:
