@@ -43,17 +43,35 @@ class Channel(models.Model):
     def __unicode__(self):
         return self.name
 
-    def on(self, pid, pid_messenger):
+    def connect(self, pid, pid_messenger):
         self.status = True
         self.pid = pid
         self.pid_messenger = pid_messenger
         self.save()
 
-    def off(self):
-        self.status = False
-        self.pid = -1
-        self.pid_messenger = -1
-        self.save()
+    def disconnect(self):
+        if self.status:
+            if self.pid_messenger != -1:
+            # Kill process that manages the message queue
+                try:
+                    os.kill(self.pid_messenger, signal.SIGKILL)
+                    logger.info("Messenger has been stopped")
+                except Exception as e:
+                    logger.error("An error occurs trying to kill the process that runs the messenger. Internal message: "
+                                 "%s" % e)
+            if self.pid != -1:
+                # Kill the process that listens Twitter's stream
+                try:
+                    os.kill(self.pid, signal.SIGKILL)
+                    logger.info("Listener has been stopped")
+                except Exception as e:
+                    logger.error("An error occurs trying to kill the process that runs the listener. Internal message: "
+                                 "%s" % e)
+            # Flag that the channel is off-line
+            self.status = False
+            self.save()
+        else:
+            logger.info("Channel already off!")
 
 class Account(models.Model):
     owner = models.CharField(max_length=50)
@@ -412,11 +430,7 @@ class MetaChannel():
 
     def disconnect(self, channel_name):
         channel_name = channel_name.lower()
-        if self.channels[channel_name]:
-            self.channels[channel_name].disconnect()
-        else:
-            logger.error("The object %s channel does not exist. A low-level disconnection was performed" % channel_name)
-            Channel.objects.get(name=channel_name).off()
+        Channel.objects.get(name=channel_name).disconnect()
 
     def set_initiatives(self, channel_name, initiative_ids):
         channel_name = channel_name.lower()
@@ -1094,29 +1108,6 @@ class SocialNetwork():
                         return challenge
         return None
 
-    def disconnect(self):
-        if self.channel.status:
-            if self.channel.pid_messenger != -1:
-            # Kill process that manages the message queue
-                try:
-                    os.kill(self.channel.pid_messenger, signal.SIGKILL)
-                    logger.info("Messenger has been stopped")
-                except Exception as e:
-                    logger.error("An error occurs trying to kill the process that runs the messenger. Internal message: "
-                                 "%s" % e)
-            if self.channel.pid != -1:
-                # Kill the process that listens Twitter's stream
-                try:
-                    os.kill(self.channel.pid, signal.SIGKILL)
-                    logger.info("Listener has been stopped")
-                except Exception as e:
-                    logger.error("An error occurs trying to kill the process that runs the listener. Internal message: "
-                                 "%s" % e)
-            # Flag that the channel is off-line
-            self.channel.off()
-        else:
-            logger.info("Channel already off!")
-
     def set_initiatives(self, initiative_ids):
         account_ids = []
         for id_initiative in initiative_ids:
@@ -1252,7 +1243,7 @@ class Twitter(SocialNetwork):
         connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
         proc_messenger.start()
         logger.info("Message Dispatcher on")
-        self.channel.on(proc_listener.pid, proc_messenger.pid)
+        self.channel.connect(proc_listener.pid, proc_messenger.pid)
 
     def _post_public(self, message, payload):
         auth_writer = self.auth_initiative_writer(payload["initiative_id"])
