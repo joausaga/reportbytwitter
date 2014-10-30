@@ -216,8 +216,8 @@ class ChallengeAdmin(admin.ModelAdmin):
 
 
 class SharePostAdmin(admin.ModelAdmin):
-    list_display = ('id','datetime', 'text', 'channel', 'url', 'initiative', 'votes', 're_posts', 'bookmarks',
-                    'similarity', 'view')
+    list_display = ('id','datetime', 'author', 'text', 'channel', 'url', 'initiative', 'votes', 're_posts', 'bookmarks',
+                    'similarity_per', 'view')
     ordering = ('datetime',)
     list_filter = ['initiative', 'channel']
 
@@ -226,6 +226,10 @@ class SharePostAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    def similarity_per(self, obj):
+        return "%s%%" % obj.similarity
+    similarity_per.short_description = 'Similarity'
 
 admin.site.register(Initiative, InitiativeAdmin)
 admin.site.register(Campaign, CampaignAdmin)
