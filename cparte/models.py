@@ -497,39 +497,40 @@ class PostManager():
         app_parent_post = None
         author_id = post["author"]["id"]
         if parent_post_id is None:
+            initiative = self.channel.has_initiative_hashtags(post)
+            within_initiative = True if initiative else False
+            challenge = self.channel.get_challenge_info(post, initiative) if within_initiative else None
             if author_id in self.channel.get_account_ids():
-                return None  # So far, we're not interested in processing posts authored by the accounts bound to the app
+                if initiative and challenge and author_id == initiative.account.id_in_channel:
+                    #Save the message if it was already saved
+                    self._save_app_post(post, initiative, challenge)
+                    logger.info("App post placed from channel's client was saved")
+                    return None
             else:
-                initiative = self.channel.has_initiative_hashtags(post)
-                within_initiative = True if initiative else False
-                if within_initiative:
-                    challenge = self.channel.get_challenge_info(post, initiative)
-                    if challenge:
-                        if post["sharing_post"]:
-                            # Save sharing post if it wasn't already saved
-                            self._save_sharing_post(post, author_obj, challenge)
-                            logger.info("The social sharing post '%s' was saved" % post["text"])
-                            return None  # We're not interested in processing posts placed through the social sharing buttons
+                if within_initiative and challenge:
+                    if post["sharing_post"]:
+                        # Save sharing post if it wasn't already saved
+                        self._save_sharing_post(post, author_obj, challenge)
+                        logger.info("The social sharing post '%s' was saved" % post["text"])
+                        return None  # We're not interested in processing posts placed through the social sharing buttons
+                    else:
+                        # Check if the post is a re-post and if the original post's text correspond to the
+                        # initiative's social sharing button message
+                        if post["org_post"]:
+                            if self._contains_social_sharing_msg(post["org_post"], initiative):
+                                logger.info("A social sharing post was re-posted!")
+                                return None  # So far, we're not interested in processing re-posted sharing posts
                         else:
-                            # Check if the post is a re-post and if the original post's text correspond to the
-                            # initiative's social sharing button message
-                            if post["org_post"]:
-                                if self._contains_social_sharing_msg(post["org_post"], initiative):
-                                    logger.info("A social sharing post was re-posted!")
-                                    return None  # So far, we're not interested in processing re-posted sharing posts
-                            else:
-                                if self._contains_social_sharing_msg(post, initiative):
-                                    # We want only the "new text" contained in the post, so we can remove the part
-                                    # corresponding to the predefined social sharing message
-                                    attached_txt = self._extract_attached_txt(initiative.social_sharing_message, post["text"])
-                                    len_attached_txt = len(attached_txt)
-                                    if len_attached_txt > 0:
-                                        post["text"] = attached_txt
-                                    else:
-                                        logger.info("There is none text attached to the social sharing msg")
-                                        return None
-                else:
-                    challenge = None
+                            if self._contains_social_sharing_msg(post, initiative):
+                                # We want only the "new text" contained in the post, so we can remove the part
+                                # corresponding to the predefined social sharing message
+                                attached_txt = self._extract_attached_txt(initiative.social_sharing_message, post["text"])
+                                len_attached_txt = len(attached_txt)
+                                if len_attached_txt > 0:
+                                    post["text"] = attached_txt
+                                else:
+                                    logger.info("There is none text attached to the social sharing msg")
+                                    return None
         else:
             try:
                 # Searching for the post in the app db
@@ -1011,6 +1012,18 @@ class PostManager():
                                      campaign=campaign, challenge=challenge, channel=channel_obj, votes=post["votes"],
                                      re_posts=post["re_posts"], bookmarks=post["bookmarks"], similarity=similarity)
             post_to_save.save(force_insert=True)
+
+    # Save app posts placed directly through the channel clients
+    def _save_app_post(self, post, initiative, challenge):
+        if not AppPost.objects.filter(id_in_channel=post["id"]).exists():
+            campaign = challenge.campaign
+            channel_obj = self.channel.get_channel_obj()
+            app_post = AppPost(id_in_channel=post["id"], datetime=timezone.make_aware(post["datetime"], timezone.get_default_timezone()),
+                               text=post["text"], url=post["url"], app_parent_post=None, initiative=initiative,
+                               campaign=campaign, contribution_parent_post=None, challenge=challenge, channel=channel_obj,
+                               votes=post["votes"], re_posts=post["re_posts"], bookmarks=post["bookmarks"],
+                               delivered=True, category="EN", payload=None, recipient_id=None, answered=False)
+            app_post.save(force_insert=True)
 
 
 class SocialNetwork():
