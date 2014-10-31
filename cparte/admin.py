@@ -97,6 +97,7 @@ class MessageInfoAdmin(admin.ModelAdmin):
             for term in key_terms:
                 found = False
                 for word in msg:
+                    word = word.rstrip('?:!.,;')  # Remove punctuation symbols
                     if term.lower() == word.lower():
                         found = True
                 if not found:
