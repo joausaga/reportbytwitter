@@ -56,6 +56,7 @@ class Channel(models.Model):
                 try:
                     os.kill(self.pid_messenger, signal.SIGKILL)
                     logger.info("Messenger has been stopped")
+                    self.pid_messenger = -1
                 except Exception as e:
                     logger.error("An error occurs trying to kill the process that runs the messenger. Internal message: "
                                  "%s" % e)
@@ -64,6 +65,7 @@ class Channel(models.Model):
                 try:
                     os.kill(self.pid, signal.SIGKILL)
                     logger.info("Listener has been stopped")
+                    self.pid = -1
                 except Exception as e:
                     logger.error("An error occurs trying to kill the process that runs the listener. Internal message: "
                                  "%s" % e)
