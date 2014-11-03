@@ -120,8 +120,8 @@ class AppPostAdmin(admin.ModelAdmin):
     list_display = ('id','datetime', 'text', 'channel', 'url', 'initiative', 'campaign', 'challenge')
     ordering = ('datetime',)
 
-    def queryset(self, request):
-        qs = super(AppPostAdmin, self).queryset(request)
+    def get_queryset(self, request):
+        qs = super(AppPostAdmin, self).get_queryset(request)
         return qs.filter(category="EN")
 
     def save_model(self, request, obj, form, change):
@@ -153,8 +153,8 @@ class ContributionPostAdmin(admin.ModelAdmin):
     ordering = ('datetime',)
     list_filter = ['initiative', 'campaign', 'challenge', 'channel']
 
-    def queryset(self, request):
-        qs = super(ContributionPostAdmin, self).queryset(request)
+    def get_queryset(self, request):
+        qs = super(ContributionPostAdmin, self).get_queryset(request)
         return qs.filter(status="PE")
 
     def view(self, obj):
@@ -171,8 +171,8 @@ class ChannelAdmin(admin.ModelAdmin):
     list_display = ('id','name', 'enabled', 'status', 'row_actions')
     ordering = ('id',)
 
-    def queryset(self, request):
-        qs = super(ChannelAdmin, self).queryset(request)
+    def get_queryset(self, request):
+        qs = super(ChannelAdmin, self).get_queryset(request)
         # Create a persistent object that will manage the enabled social network channels
         if not 'meta_channel' in request.session:
             channels = []
