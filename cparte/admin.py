@@ -2,16 +2,24 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.conf import settings
 from django.contrib import messages
+from django import forms
 from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter, \
                           ContributionPost, Account, MetaChannel, SharePost
 
 import logging
 import json
 import pickle
+import gettext
 
+MESSAGE_TAGS = {
+    messages.SUCCESS: 'alert-success success',
+    messages.WARNING: 'alert-warning warning',
+    messages.ERROR: 'alert-danger error'
+}
 
 logger = logging.getLogger(__name__)
 
+_ = gettext.gettext
 
 class ChallengeInline(admin.StackedInline):
     model = Challenge
@@ -51,11 +59,9 @@ class InitiativeAdmin(admin.ModelAdmin):
                 if len(obj.social_sharing_message) <= obj.account.channel.max_length_msgs:
                     obj.save()
                 else:
-                    self.message_user(request,
-                                      "The social sharing message must not be longer than %s characters, which is "
-                                      "maximum length allowed by the channel %s associated to the account" %
-                                      (obj.account.channel.max_length_msgs, obj.account.channel.name),
-                                      level=messages.ERROR)
+                    messages.error(request, "The social sharing message must not be longer than %s characters, which is "
+                                            "maximum length allowed by the channel %s associated to the account" %
+                                            (obj.account.channel.max_length_msgs, obj.account.channel.name))
         else:
             obj.save()
 
@@ -70,10 +76,46 @@ class ExtraInfoAdmin(admin.ModelAdmin):
     ordering = ('id',)
 
 
+class MessageInfoForm(forms.ModelForm):
+    fields = ('name', 'body', 'key_terms', 'category', 'answer_terms', 'language', 'channel')
+
+    class Meta:
+        model = Message
+
+    def clean(self):
+        cleaned_data = super(MessageInfoForm, self).clean()
+        body = cleaned_data.get("body")
+        channel = cleaned_data.get("channel")
+        key_terms = cleaned_data.get("key_terms")
+
+        if channel.max_length_msgs is None or len(body) <= channel.max_length_msgs:
+            msg = body.split()
+            key_terms = key_terms.split()
+            not_found_term = ""
+            for term in key_terms:
+                found = False
+                for word in msg:
+                    word = word.rstrip('?:!.,;')  # Remove punctuation symbols
+                    if term.lower() == word.lower():
+                        found = True
+                if not found:
+                    not_found_term = term
+                    break
+            if not_found_term:
+                msg = "The key term %(term)s is not included in the body of the message."
+                raise forms.ValidationError(_(msg), params={'term': not_found_term})
+            else:
+                return cleaned_data
+        else:
+            msg = "The length of the body is longer than %(max_length)s characters, which is %(channel)s message length " \
+                  "limit."
+            raise forms.ValidationError(_(msg), params={'max_length': channel.max_length_msgs, 'channel': channel.name})
+
 class MessageInfoAdmin(admin.ModelAdmin):
     list_display = ('id','name', 'body', 'key_terms', 'category', 'answer_terms', 'campaign', 'initiative')
     ordering = ('id',)
     list_filter = ['language']
+    form = MessageInfoForm
 
     def campaign(self, obj):
         campaigns = obj.campaign_set.all()
@@ -88,29 +130,6 @@ class MessageInfoAdmin(admin.ModelAdmin):
         for c in campaigns:
             initiative_names += c.initiative.name + " "
         return initiative_names
-
-    def save_model(self, request, obj, form, change):
-        if obj.channel.max_length_msgs is None or len(obj.body) <= obj.channel.max_length_msgs:
-            msg = obj.body.split()
-            key_terms = obj.key_terms.split()
-            not_found_term = ""
-            for term in key_terms:
-                found = False
-                for word in msg:
-                    word = word.rstrip('?:!.,;')  # Remove punctuation symbols
-                    if term.lower() == word.lower():
-                        found = True
-                if not found:
-                    not_found_term = term
-                    break
-            if not_found_term:
-                self.message_user(request, "The key term: %s is not included in the message" % not_found_term,
-                                  level=messages.ERROR)
-            else:
-                obj.save()
-        else:
-            self.message_user(request, "The limit of the message body cannot exceed the channel's length for messages "
-                                       "%s" % obj.channel.max_length_msgs, level=messages.ERROR)
 
 
 class AppPostAdmin(admin.ModelAdmin):
@@ -140,8 +159,8 @@ class AppPostAdmin(admin.ModelAdmin):
                 payload_json = json.dumps(payload)
                 social_network.queue_message(message=obj.text, type_msg="PU", payload=payload_json)
             else:
-                self.message_user(request, "The length of the message exceed the channel's limit (%s) for messages" %
-                                  ch.max_length_msgs, level=messages.ERROR)
+                messages.error(request, "The length of the message exceed the channel's limit (%s) for messages" %
+                                        ch.max_length_msgs)
         else:
             raise Exception("The social network object couldn't be created")
 
