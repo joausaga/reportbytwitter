@@ -620,9 +620,10 @@ class PostManager():
 
     def _get_parent_post_message(self, text_post, campaign):
         messages = list(campaign.messages.all())
-        # Add campaign's extrainfo messages
-        for msg_extrainfo in campaign.extrainfo.messages.all():
-            messages.append(msg_extrainfo)
+        if campaign.extrainfo is not None:
+            # Add campaign's extrainfo messages
+            for msg_extrainfo in campaign.extrainfo.messages.all():
+                messages.append(msg_extrainfo)
         for message in messages:
             found_all_terms = True
             terms = message.key_terms.split()
@@ -1034,6 +1035,7 @@ class SocialNetwork():
     accounts = None
     hashtags = None
     MSG_DUPLICATE_CODE = 187
+    MSG_LENGTH_ABOVE_LIMIT_CODE = 186
     channel = None
 
     @abc.abstractmethod
@@ -1185,6 +1187,8 @@ class SocialNetwork():
                     msg_to_dispatch.delete()
                 else:
                     if res['response'][0]['code'] == self.MSG_DUPLICATE_CODE:
+                        msg_to_dispatch.delete()
+                    if res['response'][0]['code'] == self.MSG_LENGTH_ABOVE_LIMIT_CODE:
                         msg_to_dispatch.delete()
                     # Need to add actions for other errors, so far only duplicate messages are considered
             else:
