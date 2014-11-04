@@ -47,23 +47,36 @@ class CampaignAdmin(admin.ModelAdmin):
     list_challenges.short_description = 'Challenges'
 
 
+class InitiativeForm(forms.ModelForm):
+
+    class Meta:
+        model = Initiative
+        fields = ('name', 'organizer', 'hashtag', 'url', 'language', 'account', 'social_sharing_message')
+
+    def clean(self):
+        cleaned_data = super(InitiativeForm, self).clean()
+        account = cleaned_data.get("account")
+        ss_msg = cleaned_data.get("social_sharing_message")
+
+        if ss_msg is not None:
+            if account.channel.max_length_msgs is not None:
+                if len(ss_msg) > account.channel.max_length_msgs:
+                    msg = "The social sharing message is longer than %(max_character)s characters, which is %(channel)s " \
+                          "message length limit."
+                    raise forms.ValidationError(_(msg),params={'max_character': account.channel.max_length_msgs,
+                                                               'channel': account.channel.name})
+                else:
+                    return cleaned_data
+            else:
+                return cleaned_data
+        else:
+            return cleaned_data
+
+
 class InitiativeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'organizer', 'hashtag', 'account', 'url', 'language', 'social_sharing_message')
     ordering = ('id',)
-
-    def save_model(self, request, obj, form, change):
-        if obj.social_sharing_message is not None:
-            if obj.account.channel.max_length_msgs is None:
-                obj.save()
-            else:
-                if len(obj.social_sharing_message) <= obj.account.channel.max_length_msgs:
-                    obj.save()
-                else:
-                    messages.error(request, "The social sharing message must not be longer than %s characters, which is "
-                                            "maximum length allowed by the channel %s associated to the account" %
-                                            (obj.account.channel.max_length_msgs, obj.account.channel.name))
-        else:
-            obj.save()
+    form = InitiativeForm
 
 
 class SettingAdmin(admin.ModelAdmin):
@@ -77,10 +90,10 @@ class ExtraInfoAdmin(admin.ModelAdmin):
 
 
 class MessageInfoForm(forms.ModelForm):
-    fields = ('name', 'body', 'key_terms', 'category', 'answer_terms', 'language', 'channel')
 
     class Meta:
         model = Message
+        fields = ('name', 'body', 'key_terms', 'category', 'answer_terms', 'language', 'channel')
 
     def clean(self):
         cleaned_data = super(MessageInfoForm, self).clean()
@@ -111,6 +124,7 @@ class MessageInfoForm(forms.ModelForm):
                   "limit."
             raise forms.ValidationError(_(msg), params={'max_length': channel.max_length_msgs, 'channel': channel.name})
 
+
 class MessageInfoAdmin(admin.ModelAdmin):
     list_display = ('id','name', 'body', 'key_terms', 'category', 'answer_terms', 'campaign', 'initiative')
     ordering = ('id',)
@@ -132,35 +146,48 @@ class MessageInfoAdmin(admin.ModelAdmin):
         return initiative_names
 
 
+class AppPostForm(forms.ModelForm):
+
+    class Meta:
+        model = AppPost
+        fields = ('text', 'initiative', 'campaign', 'challenge', 'channel', 'category')
+
+    def clean(self):
+        cleaned_data = super(AppPostForm, self).clean()
+        channel = cleaned_data.get("channel")
+        text = cleaned_data.get("text")
+
+        if len(text) > channel.max_length_msgs:
+            msg = "The length of the text is longer than %(max_length)s characters, which is %(channel)s message " \
+                  "length limit."
+            raise forms.ValidationError(_(msg), params={'max_length': channel.max_length_msgs, 'channel': channel.name})
+
+
 class AppPostAdmin(admin.ModelAdmin):
     fieldsets = [
-        (None,{'fields': ['text', 'initiative', 'campaign', 'challenge', 'channel', 'category']})
+        (None, {'fields': ['text', 'initiative', 'campaign', 'challenge', 'channel', 'category']})
     ]
     list_display = ('id','datetime', 'text', 'channel', 'url', 'initiative', 'campaign', 'challenge')
     ordering = ('datetime',)
+    form = AppPostForm
 
     def get_queryset(self, request):
         qs = super(AppPostAdmin, self).get_queryset(request)
         return qs.filter(category="EN")
 
     def save_model(self, request, obj, form, change):
-        ch = Channel.objects.get(name=obj.channel.name)
         if obj.channel.name == "Twitter":
             social_network = Twitter()
         else:
             raise Exception("Unknown channel named %s" % obj.channel.name)
 
         if social_network:
-            if len(obj.text) <= ch.max_length_msgs:
-                payload = {'parent_post_id': None, 'type_msg': obj.category,
-                           'post_id': None, 'initiative_id': obj.initiative.id,
-                           'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id,
-                           'author_id': None, 'initiative_short_url': None}
-                payload_json = json.dumps(payload)
-                social_network.queue_message(message=obj.text, type_msg="PU", payload=payload_json)
-            else:
-                messages.error(request, "The length of the message exceed the channel's limit (%s) for messages" %
-                                        ch.max_length_msgs)
+            payload = {'parent_post_id': None, 'type_msg': obj.category,
+                       'post_id': None, 'initiative_id': obj.initiative.id,
+                       'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id,
+                       'author_id': None, 'initiative_short_url': None}
+            payload_json = json.dumps(payload)
+            social_network.queue_message(message=obj.text, type_msg="PU", payload=payload_json)
         else:
             raise Exception("The social network object couldn't be created")
 
