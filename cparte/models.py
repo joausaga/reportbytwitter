@@ -106,6 +106,7 @@ class Message(models.Model):
                     ('author_banned', 'Notify the author that he/she was banned'),
                     ('not_understandable_change_contribution_reply', 'Not understandable reply to the request about'
                                                                      'changing a previous contribution'),
+                    ('already_answered_unchangeable_challenge', 'Participant already answered an unchangeable challenge'),
     )
     category = models.CharField(max_length=100, choices=CATEGORIES)
     answer_terms = models.CharField(max_length=10, null=True, blank=True, help_text="Max length 10 characters")
@@ -254,6 +255,7 @@ class Challenge(models.Model):
     answers_from_same_author = models.IntegerField(default=1, help_text="Number of answers allowed from the same "
                                                                         "author. Use -1 for not limit")
     url = models.URLField(null=True, blank=True)
+    accept_changes = models.BooleanField(default=True)
 
     def __unicode__(self):
         return self.name
@@ -723,45 +725,53 @@ class PostManager():
             if challenge.answers_from_same_author != self.NO_LIMIT_ANSWERS:
                 existing_posts = list(self._has_already_posted(author_obj, challenge))
                 if len(existing_posts) > 0:
-                    if challenge.answers_from_same_author == 1:
-                        # Allow changes only if the number of allowed answers is 1
-                        if len(existing_posts) > 1:
-                            # It should exist only one contribution, but if not and as way of auto-recovering from an
-                            # inconsistent state the newest ones will be discarded, leaving only the oldest one in
-                            # the database
-                            logger.critical("The challenge %s allows only one contribution per participant but the author "
-                                            "%s has more than one contribution saved in the db. The newest ones will be "
-                                            "discarded" % (challenge.name, author["name"]))
-                            for e_post in existing_posts[:]:
-                                e_post.discard()
-                                existing_posts.remove(e_post)
-                                if len(existing_posts) == 1:
-                                    break
-                        existing_post = existing_posts[0]
-                        if self._to_unicode(curated_input) != self._to_unicode(existing_post.contribution):
-                            # Only if the new contribution is different from the previous we will process it
-                            # otherwise it will be ignored
-                            self._save_post(post, author_obj, curated_input, challenge, temporal=True)
-                            logger.info("A new contribution to the challenge %s was posted by the participant %s. "
-                                        "It was saved temporarily" % (challenge.name, author["name"]))
-                            message = campaign.messages.get(category="ask_change_contribution")
-                            self._send_reply(post, campaign.initiative, challenge, message, (curated_input, existing_post))
-                            return message
+                    if challenge.accept_changes:
+                        if challenge.answers_from_same_author == 1:
+                            # Allow changes only if the number of allowed answers is 1
+                            if len(existing_posts) > 1:
+                                # It should exist only one contribution, but if not and as way of auto-recovering from an
+                                # inconsistent state the newest ones will be discarded, leaving only the oldest one in
+                                # the database
+                                logger.critical("The challenge %s allows only one contribution per participant but the author "
+                                                "%s has more than one contribution saved in the db. The newest ones will be "
+                                                "discarded" % (challenge.name, author["name"]))
+                                for e_post in existing_posts[:]:
+                                    e_post.discard()
+                                    existing_posts.remove(e_post)
+                                    if len(existing_posts) == 1:
+                                        break
+                            existing_post = existing_posts[0]
+                            if self._to_unicode(curated_input) != self._to_unicode(existing_post.contribution):
+                                # Only if the new contribution is different from the previous we will process it
+                                # otherwise it will be ignored
+                                self._save_post(post, author_obj, curated_input, challenge, temporal=True)
+                                logger.info("A new contribution to the challenge %s was posted by the participant %s. "
+                                            "It was saved temporarily" % (challenge.name, author["name"]))
+                                message = campaign.messages.get(category="ask_change_contribution")
+                                self._send_reply(post, campaign.initiative, challenge, message, (curated_input, existing_post))
+                                return message
+                            else:
+                                logger.info("The new contribution: %s is equal as the already existing" % curated_input)
+                                return None
                         else:
-                            logger.info("The new contribution: %s is equal as the already existing" % curated_input)
-                            return None
+                            if len(existing_posts) <= challenge.answers_from_same_author:
+                                # Save participant's answer if the participant is still under the limit of allowed answers
+                                return self._do_process_input(post, author_obj, campaign, challenge, curated_input)
+                            else:
+                                # Send a message saying that he/she has reached the limit of allowed answers
+                                message = campaign.messages.get(category="limit_answers_reached")
+                                self._send_reply(post, campaign.initiative, challenge, message)
+                                author_obj.reset_mistake_flags()
+                                logger.info("The participant %s has reached the limit of %s contributions allowed in the "
+                                            "challenge %s" % (author["name"], challenge.answers_from_same_author, challenge.name))
+                                return message
                     else:
-                        if len(existing_posts) <= challenge.answers_from_same_author:
-                            # Save participant's answer if the participant is still under the limit of allowed answers
-                            return self._do_process_input(post, author_obj, campaign, challenge, curated_input)
-                        else:
-                            # Send a message saying that he/she has reached the limit of allowed answers
-                            message = campaign.messages.get(category="limit_answers_reached")
-                            self._send_reply(post, campaign.initiative, challenge, message)
-                            author_obj.reset_mistake_flags()
-                            logger.info("The participant %s has reached the limit of %s contributions allowed in the "
-                                        "challenge %s" % (author["name"], challenge.answers_from_same_author, challenge.name))
-                            return message
+                        # Send a message saying that he/she has already answered the challenge
+                        message = campaign.messages.get(category="already_answered_unchangeable_challenge")
+                        self._send_reply(post, campaign.initiative, challenge, message)
+                        logger.info("The participant %s has answered the unchangeable challenge %s" % (author["name"],
+                                                                                                       challenge.name))
+                        return message
                 else:
                     return self._do_process_input(post, author_obj, campaign, challenge, curated_input)
             else:
@@ -923,6 +933,9 @@ class PostManager():
             msg = message.body % author_username
             type_msg = "NT"
         elif message.category == "not_understandable_change_contribution_reply":
+            msg = message.body % (author_username, current_datetime)
+            type_msg = "NT"
+        elif message.category == "already_answered_unchangeable_challenge":
             msg = message.body % (author_username, current_datetime)
             type_msg = "NT"
         if msg is not None:
@@ -1338,6 +1351,7 @@ class Twitter(SocialNetwork):
             logger.error("Couldn't find the initiative. The initiative writer couldn't be authenticated so the message "
                          "won't be delivered")
             return None
+
 
 class TwitterListener(tweepy.StreamListener):
     manager = None

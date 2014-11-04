@@ -3,6 +3,7 @@ from django.utils.html import format_html
 from django.conf import settings
 from django.contrib import messages
 from django import forms
+from django.forms.models import BaseInlineFormSet
 from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter, \
                           ContributionPost, Account, MetaChannel, SharePost
 
@@ -21,9 +22,70 @@ logger = logging.getLogger(__name__)
 
 _ = gettext.gettext
 
+
+class ChallengeFormSet(BaseInlineFormSet):
+    def clean(self):
+        super(ChallengeFormSet, self).clean()
+
+        campaign = self.instance
+        msgs = campaign.messages.all()
+        exists_unchangeable_challenge = False
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            cleaned_data = form.cleaned_data
+            accept_changes = cleaned_data.get("accept_changes")
+            if not accept_changes and accept_changes is not None:
+                exists_unchangeable_challenge = True
+                break
+        if exists_unchangeable_challenge:
+            exists_unchangeable_challenge_msg = False
+            for message in msgs:
+                if message.category == "already_answered_unchangeable_challenge":
+                    exists_unchangeable_challenge_msg = True
+                    break
+            if not exists_unchangeable_challenge_msg:
+                msg = "Please include the message that is going to be used to reply participants that try to change " \
+                      "their answers to the following challenge."
+                raise forms.ValidationError(_(msg))
+
+
 class ChallengeInline(admin.StackedInline):
     model = Challenge
     extra = 1
+    formset = ChallengeFormSet
+
+
+class CampaignForm(forms.ModelForm):
+
+    class Meta:
+        model = Campaign
+        fields = ('name', 'initiative', 'hashtag', 'url', 'extrainfo', 'messages')
+
+    def clean(self):
+        cleaned_data = super(CampaignForm, self).clean()
+        challenges = self.instance.challenge_set.all()
+        msgs = cleaned_data.get('messages')
+        exists_unchangeable_challenge = False
+        unchangeable_challenge = ""
+        for form in self.forms:
+            print form.cleaned_data
+
+        # for challenge in challenges:
+        #     if not challenge.accept_changes:
+        #         exists_unchangeable_challenge = True
+        #         unchangeable_challenge = challenge.name
+        #         break
+        # if exists_unchangeable_challenge:
+        #     exists_unchangeable_challenge_msg = False
+        #     for message in msgs:
+        #         if message.category == "already_answered_unchangeable_challenge":
+        #             exists_unchangeable_challenge_msg = True
+        #             break
+        #     if not exists_unchangeable_challenge_msg:
+        #         msg = "Please add a message to reply in case a participant answers more than once the challenge '" \
+        #               "%(challenge)s', which only accepts an unique answer."
+        #         raise forms.ValidationError(_(msg),params={'challenge': unchangeable_challenge})
 
 
 class CampaignAdmin(admin.ModelAdmin):
@@ -31,6 +93,7 @@ class CampaignAdmin(admin.ModelAdmin):
     list_display = ('id','name', 'initiative', 'list_challenges')
     ordering = ('id',)
     filter_horizontal = ('messages',)
+    #form = CampaignForm
 
     def list_challenges(self, obj):
         challenges = obj.challenge_set.all()
