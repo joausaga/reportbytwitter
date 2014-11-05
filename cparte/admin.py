@@ -24,12 +24,22 @@ _ = gettext.gettext
 
 
 class ChallengeFormSet(BaseInlineFormSet):
+
     def clean(self):
         super(ChallengeFormSet, self).clean()
-
         campaign = self.instance
+        self._validate_unchangeable_challenges(campaign)
+        self._validate_incorrect_contribution_msg(campaign)
+        self._validate_limit_contributions(campaign)
+        self._validate_changeable_challenges(campaign)
+
+    # Check if a message to reply in case an unchangeable challenge is answered more than once was included into the
+    # campaign's message list
+    def _validate_unchangeable_challenges(self, campaign):
         msgs = campaign.messages.all()
         exists_unchangeable_challenge = False
+        cleaned_data = None
+
         for form in self.forms:
             if not hasattr(form, 'cleaned_data'):
                 continue
@@ -48,11 +58,113 @@ class ChallengeFormSet(BaseInlineFormSet):
                 msg = "Please include the message that is going to be used to reply participants that try to change " \
                       "their answers to the following challenge."
                 raise forms.ValidationError(_(msg))
+            else:
+                return cleaned_data
 
+    # Check if a message to reply in case of an incorrect answer was included into the campaign's message list
+    def _validate_incorrect_contribution_msg(self, campaign):
+        msgs = campaign.messages.all()
+        exists_structured_challenge = False
+        cleaned_data = None
+
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            cleaned_data = form.cleaned_data
+            style_challenge = cleaned_data.get("style_answer")
+            if style_challenge == "ST":  # Structured
+                exists_structured_challenge = True
+                break
+        if exists_structured_challenge:
+            exists_incorrect_format_msg = False
+            exists_banned_msg = False
+            for message in msgs:
+                if message.category == "incorrect_answer":
+                    exists_incorrect_format_msg = True
+                if message.category == "author_banned":
+                    exists_banned_msg = True
+            if not exists_incorrect_format_msg:
+                msg = "Please include into the message list a message to notify participants that their contributions" \
+                      "do not have the required format."
+                raise forms.ValidationError(_(msg))
+            elif not exists_banned_msg:
+                msg = "Please include into the message list a message to notify that the participants was banned" \
+                      "because he/she has passed the limit of incorrect answers."
+                raise forms.ValidationError(_(msg))
+            else:
+                return cleaned_data
+
+    # Check if a message to notify participants that their number of contributions has reached the limit was included
+    # into the campaign's message list
+    def _validate_limit_contributions(self, campaign):
+        msgs = campaign.messages.all()
+        exists_limited_answers_challenge = False
+        cleaned_data = None
+
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            cleaned_data = form.cleaned_data
+            limit_answers = cleaned_data.get("answers_from_same_author")
+            accept_changes = cleaned_data.get("accept_changes")
+            if limit_answers > 1 or (limit_answers == 1 and (not accept_changes and accept_changes is not None)):
+                exists_limited_answers_challenge = True
+                break
+        if exists_limited_answers_challenge:
+            exists_limited_answers_notification_msg = False
+            for message in msgs:
+                if message.category == "limit_answers_reached":
+                    exists_limited_answers_notification_msg = True
+                    break
+            if not exists_limited_answers_notification_msg:
+                msg = "Please include into the message list a message to notify participants that their number of " \
+                      "contributions has reached the limit."
+                raise forms.ValidationError(_(msg))
+            else:
+                return cleaned_data
+
+    # Check if messages to manage changes of contributions were include into the campaign's message list
+    def _validate_changeable_challenges(self, campaign):
+        msgs = campaign.messages.all()
+        exists_changeable_challenges = False
+        cleaned_data = None
+
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            cleaned_data = form.cleaned_data
+            accept_changes = cleaned_data.get("accept_changes")
+            if accept_changes and accept_changes is not None:
+                exists_changeable_challenges = True
+                break
+        if exists_changeable_challenges:
+            exists_ask_change_contribution_msg = False
+            exists_thanking_change_msg = False
+            exists_not_understandable_change_msg = False
+            for message in msgs:
+                if message.category == "ask_change_contribution":
+                    exists_ask_change_contribution_msg = True
+                if message.category == "thanks_change":
+                    exists_thanking_change_msg = True
+                if message.category == "not_understandable_change_contribution_reply":
+                    exists_not_understandable_change_msg = True
+            if not exists_ask_change_contribution_msg:
+                msg = "Please include into the message list a message to ask a participant whether he/she want to " \
+                      "change his/her contribution."
+                raise forms.ValidationError(_(msg))
+            elif not exists_thanking_change_msg:
+                msg = "Please include into the message list a message to thank participants for their change."
+                raise forms.ValidationError(_(msg))
+            elif not exists_not_understandable_change_msg:
+                msg = "Please include into the message list a message to notify a participant that his/her answer to" \
+                      "to the request about changing a previous contribution was not understandable."
+                raise forms.ValidationError(_(msg))
+            else:
+                return cleaned_data
 
 class ChallengeInline(admin.StackedInline):
     model = Challenge
-    extra = 1
+    extra = 0
     formset = ChallengeFormSet
 
 
@@ -64,36 +176,61 @@ class CampaignForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super(CampaignForm, self).clean()
-        challenges = self.instance.challenge_set.all()
-        msgs = cleaned_data.get('messages')
-        exists_unchangeable_challenge = False
-        unchangeable_challenge = ""
-        for form in self.forms:
-            print form.cleaned_data
+        self._validate_extrainfo_msg(cleaned_data)
+        self._validate_thanking_msg(cleaned_data)
 
-        # for challenge in challenges:
-        #     if not challenge.accept_changes:
-        #         exists_unchangeable_challenge = True
-        #         unchangeable_challenge = challenge.name
-        #         break
-        # if exists_unchangeable_challenge:
-        #     exists_unchangeable_challenge_msg = False
-        #     for message in msgs:
-        #         if message.category == "already_answered_unchangeable_challenge":
-        #             exists_unchangeable_challenge_msg = True
-        #             break
-        #     if not exists_unchangeable_challenge_msg:
-        #         msg = "Please add a message to reply in case a participant answers more than once the challenge '" \
-        #               "%(challenge)s', which only accepts an unique answer."
-        #         raise forms.ValidationError(_(msg),params={'challenge': unchangeable_challenge})
+    # Check if messages to ask for extra information were included into the campaign's message list
+    def _validate_extrainfo_msg(self, cleaned_data):
+        extrainfo = cleaned_data.get("extrainfo")
 
+        if extrainfo is not None:
+            msgs = cleaned_data.get("messages").all()
+            exists_request_extrainfo_msg = False
+            exists_incorrect_extrainfo_msg = False
+            exists_contribution_cannot_save_msg = False
+            for message in msgs:
+                if message.category == "request_author_extrainfo":
+                    exists_request_extrainfo_msg = True
+                if message.category == "incorrect_author_extrainfo":
+                    exists_incorrect_extrainfo_msg = True
+                if message.category == "contribution_cannot_save":
+                    exists_contribution_cannot_save_msg = True
+            if not exists_request_extrainfo_msg:
+                msg = "Please include into the messages list a message to request participants for their extra " \
+                      "information."
+                raise forms.ValidationError(_(msg))
+            elif not exists_incorrect_extrainfo_msg:
+                msg = "Please include into the messages list a message to notify that the extra information provided " \
+                      "has an incorrect format."
+                raise forms.ValidationError(_(msg))
+            elif not exists_contribution_cannot_save_msg:
+                msg = "Please include into the messages list a message to notify that the contribution cannot be saved " \
+                      "because the number of attempts to provide correct extra information has gone over the allowed " \
+                      "limits."
+                raise forms.ValidationError(_(msg))
+            else:
+                return cleaned_data
+
+    # Check if a thanking message was included into the campaign's message list
+    def _validate_thanking_msg(self, cleaned_data):
+        msgs = cleaned_data.get("messages").all()
+        exists_thanking_msg = False
+        for message in msgs:
+            if message.category == "thanks_contribution":
+                exists_thanking_msg = True
+                break
+        if not exists_thanking_msg:
+            msg = "Please include into the messages list a message to thank participants for their contributions."
+            raise forms.ValidationError(_(msg))
+        else:
+            return cleaned_data
 
 class CampaignAdmin(admin.ModelAdmin):
     inlines = [ChallengeInline]
     list_display = ('id','name', 'initiative', 'list_challenges')
     ordering = ('id',)
     filter_horizontal = ('messages',)
-    #form = CampaignForm
+    form = CampaignForm
 
     def list_challenges(self, obj):
         challenges = obj.challenge_set.all()
@@ -163,6 +300,8 @@ class MessageInfoForm(forms.ModelForm):
         body = cleaned_data.get("body")
         channel = cleaned_data.get("channel")
         key_terms = cleaned_data.get("key_terms")
+        category = cleaned_data.get("category")
+        answer_terms = cleaned_data.get("answer_terms")
 
         if channel.max_length_msgs is None or len(body) <= channel.max_length_msgs:
             msg = body.split()
@@ -181,7 +320,12 @@ class MessageInfoForm(forms.ModelForm):
                 msg = "The key term %(term)s is not included in the body of the message."
                 raise forms.ValidationError(_(msg), params={'term': not_found_term})
             else:
-                return cleaned_data
+                if category == "ask_change_contribution" and answer_terms == "":
+                    msg = "Please define in answer terms field the terms you expect as a reply to the question about" \
+                          "changing a previous contribution."
+                    raise forms.ValidationError(_(msg))
+                else:
+                    return cleaned_data
         else:
             msg = "The length of the body is longer than %(max_length)s characters, which is %(channel)s message length " \
                   "limit."
