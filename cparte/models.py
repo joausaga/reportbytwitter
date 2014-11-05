@@ -252,7 +252,7 @@ class Challenge(models.Model):
     format_answer = models.CharField(max_length=50, null=True, blank=True,
                                      help_text="A regular expression or blank in case of freestyle answers")
     max_length_answer = models.IntegerField(null=True, blank=True)
-    answers_from_same_author = models.IntegerField(default=1, help_text="Number of answers allowed from the same "
+    answers_from_same_author = models.IntegerField(default=1, help_text="Number of allowed answers from the same "
                                                                         "author. Use -1 for not limit")
     url = models.URLField(null=True, blank=True)
     accept_changes = models.BooleanField(default=True)
