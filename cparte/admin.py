@@ -391,6 +391,8 @@ class AppPostAdmin(admin.ModelAdmin):
                        'author_id': None, 'initiative_short_url': None}
             payload_json = json.dumps(payload)
             social_network.queue_message(message=obj.text, type_msg="PU", payload=payload_json)
+            messages.success(request, "The app post has been created and queued to be sent. After sending it will be "
+                                      "listed here. ")
         else:
             raise Exception("The social network object couldn't be created")
 
