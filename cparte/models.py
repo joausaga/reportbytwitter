@@ -1457,8 +1457,8 @@ class TwitterListener(tweepy.StreamListener):
                                      "disconnected."
             elif notice["code"] == 9:
                 notice_name = "Max message limit"
-                notice_description = "The stream connected with a negative count parameter and was disconnected after all " \
-                                     "backfill was delivered."
+                notice_description = "The stream connected with a negative count parameter and was disconnected " \
+                                     "after all backfill was delivered."
             elif notice["code"] == 10:
                 notice_name = "Stream exception"
                 notice_description = "An internal issue disconnected the stream."
@@ -1467,10 +1467,10 @@ class TwitterListener(tweepy.StreamListener):
                 notice_description = "An internal issue disconnected the stream."
             elif notice["code"] == 12:
                 notice_name = "Shed load"
-                notice_description = "The host the stream was connected to became overloaded and streams were disconnected " \
-                                     "to balance load. Reconnect as usual."
+                notice_description = "The host the stream was connected to became overloaded and streams were " \
+                                     "disconnected to balance load. Reconnect as usual."
 
-            logger.critical("Got the disconnect message %s from the firehose. Code: %s, Reason: %s, Description: %s" %
+            logger.critical("The stream was disconnected. Message %s. Code: %s. Reason: %s. Description: %s" %
                             (notice_name, notice["code"], notice["reason"], notice_description))
         except Exception as e:
             logger.critical("Error in the method on_disconnect. Message: %s" % e)
