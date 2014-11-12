@@ -54,7 +54,7 @@ class Channel(models.Model):
             if self.pid_messenger != -1:
             # Kill process that manages the message queue
                 try:
-                    os.kill(self.pid_messenger, signal.SIGKILL)
+                    os.kill(self.pid_messenger, signal.SIGTERM)
                     logger.info("Messenger has been stopped")
                     self.pid_messenger = -1
                 except Exception as e:
@@ -63,7 +63,7 @@ class Channel(models.Model):
             if self.pid != -1:
                 # Kill the process that listens Twitter's stream
                 try:
-                    os.kill(self.pid, signal.SIGKILL)
+                    os.kill(self.pid, signal.SIGTERM)
                     logger.info("Listener has been stopped")
                     self.pid = -1
                 except Exception as e:
@@ -74,6 +74,7 @@ class Channel(models.Model):
             self.save()
         else:
             logger.info("Channel already off!")
+
 
 class Account(models.Model):
     owner = models.CharField(max_length=50)
