@@ -1438,37 +1438,40 @@ class TwitterListener(tweepy.StreamListener):
         notice_name = ""
         notice_description = ""
 
-        if notice.code == 1:
-            notice_name = "Shutdown"
-            notice_description = "The feed was shutdown (possibly a machine restart)"
-        elif notice.code == 2:
-            notice_name = "Duplicate stream"
-            notice_description = "The same endpoint was connected too many times."
-        elif notice.code == 4:
-            notice_name = "Stall"
-            notice_description = "The client was reading too slowly and was disconnected by the server."
-        elif notice.code == 5:
-            notice_name = "Normal"
-            notice_description = "The client appeared to have initiated a disconnect."
-        elif notice.code == 7:
-            notice_name = "Admin logout"
-            notice_description = "The same credentials were used to connect a new stream and the oldest was " \
-                                 "disconnected."
-        elif notice.code == 9:
-            notice_name = "Max message limit"
-            notice_description = "The stream connected with a negative count parameter and was disconnected after all " \
-                                 "backfill was delivered."
-        elif notice.code == 10:
-            notice_name = "Stream exception"
-            notice_description = "An internal issue disconnected the stream."
-        elif notice.code == 11:
-            notice_name = "Broker stall"
-            notice_description = "An internal issue disconnected the stream."
-        elif notice.code == 12:
-            notice_name = "Shed load"
-            notice_description = "The host the stream was connected to became overloaded and streams were disconnected " \
-                                 "to balance load. Reconnect as usual."
+        try:
+            if notice["code"] == 1:
+                notice_name = "Shutdown"
+                notice_description = "The feed was shutdown (possibly a machine restart)"
+            elif notice["code"] == 2:
+                notice_name = "Duplicate stream"
+                notice_description = "The same endpoint was connected too many times."
+            elif notice["code"] == 4:
+                notice_name = "Stall"
+                notice_description = "The client was reading too slowly and was disconnected by the server."
+            elif notice["code"] == 5:
+                notice_name = "Normal"
+                notice_description = "The client appeared to have initiated a disconnect."
+            elif notice["code"] == 7:
+                notice_name = "Admin logout"
+                notice_description = "The same credentials were used to connect a new stream and the oldest was " \
+                                     "disconnected."
+            elif notice["code"] == 9:
+                notice_name = "Max message limit"
+                notice_description = "The stream connected with a negative count parameter and was disconnected after all " \
+                                     "backfill was delivered."
+            elif notice["code"] == 10:
+                notice_name = "Stream exception"
+                notice_description = "An internal issue disconnected the stream."
+            elif notice["code"] == 11:
+                notice_name = "Broker stall"
+                notice_description = "An internal issue disconnected the stream."
+            elif notice["code"] == 12:
+                notice_name = "Shed load"
+                notice_description = "The host the stream was connected to became overloaded and streams were disconnected " \
+                                     "to balance load. Reconnect as usual."
 
-        logger.critical("Got the disconnect message %s from the firehose. Code: %s, Reason: %s, Description: %s" %
-                        (notice_name, notice.code, notice.reason, notice_description))
+            logger.critical("Got the disconnect message %s from the firehose. Code: %s, Reason: %s, Description: %s" %
+                            (notice_name, notice["code"], notice["reason"], notice_description))
+        except Exception as e:
+            logger.critical("Error in the method on_disconnect. Message: %s" % e)
         return True  # To continue listening
