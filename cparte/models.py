@@ -1374,35 +1374,6 @@ class TwitterListener(tweepy.StreamListener):
         self.manager.manage_post(status_dict)
         return True
 
-    def on_error(self, error_code):
-        url_error_explanations = "https://dev.twitter.com/streaming/overview/connecting"
-        error_title = ""
-
-        if error_code == 401:
-            error_title = "Unauthorized"
-        elif error_code == 403:
-            error_title = "Forbidden"
-        elif error_code == 404:
-            error_title = "Unknown"
-        elif error_code == 406:
-            error_title = "Not Acceptable"
-        elif error_code == 413:
-            error_title = "Too Long"
-        elif error_code == 416:
-            error_title = "Range Unacceptable"
-        elif error_code == 420:
-            error_title = "Rate Limited"
-        elif error_code == 503:
-            error_title = "Service Unavailable"
-
-        logger.error("Error %s (%s) in the firehose. For further explanation check: %s" %
-                     (str(error_code), error_title, url_error_explanations))
-        return True  # To continue listening
-
-    def on_timeout(self):
-        logger.warning("Got timeout from the firehose")
-        return True  # To continue listening
-
     def get_tweet_dict(self, status):
         author = status.author
         # Extract tweet source
@@ -1433,3 +1404,71 @@ class TwitterListener(tweepy.StreamListener):
         for hashtag in status.entities['hashtags']:
             hashtags.append(hashtag['text'].lower().strip())
         return hashtags
+
+    def on_error(self, error_code):
+        url_error_explanations = "https://dev.twitter.com/streaming/overview/connecting"
+        error_title = ""
+
+        if error_code == 401:
+            error_title = "Unauthorized"
+        elif error_code == 403:
+            error_title = "Forbidden"
+        elif error_code == 404:
+            error_title = "Unknown"
+        elif error_code == 406:
+            error_title = "Not Acceptable"
+        elif error_code == 413:
+            error_title = "Too Long"
+        elif error_code == 416:
+            error_title = "Range Unacceptable"
+        elif error_code == 420:
+            error_title = "Rate Limited"
+        elif error_code == 503:
+            error_title = "Service Unavailable"
+
+        logger.critical("Error %s (%s) in the firehose. For further explanation check: %s" %
+                        (str(error_code), error_title, url_error_explanations))
+        return True  # To continue listening
+
+    def on_timeout(self):
+        logger.warning("Got timeout from the firehose")
+        return True  # To continue listening
+
+    def on_disconnect(self, notice):
+        notice_name = ""
+        notice_description = ""
+
+        if notice.code == 1:
+            notice_name = "Shutdown"
+            notice_description = "The feed was shutdown (possibly a machine restart)"
+        elif notice.code == 2:
+            notice_name = "Duplicate stream"
+            notice_description = "The same endpoint was connected too many times."
+        elif notice.code == 4:
+            notice_name = "Stall"
+            notice_description = "The client was reading too slowly and was disconnected by the server."
+        elif notice.code == 5:
+            notice_name = "Normal"
+            notice_description = "The client appeared to have initiated a disconnect."
+        elif notice.code == 7:
+            notice_name = "Admin logout"
+            notice_description = "The same credentials were used to connect a new stream and the oldest was " \
+                                 "disconnected."
+        elif notice.code == 9:
+            notice_name = "Max message limit"
+            notice_description = "The stream connected with a negative count parameter and was disconnected after all " \
+                                 "backfill was delivered."
+        elif notice.code == 10:
+            notice_name = "Stream exception"
+            notice_description = "An internal issue disconnected the stream."
+        elif notice.code == 11:
+            notice_name = "Broker stall"
+            notice_description = "An internal issue disconnected the stream."
+        elif notice.code == 12:
+            notice_name = "Shed load"
+            notice_description = "The host the stream was connected to became overloaded and streams were disconnected " \
+                                 "to balance load. Reconnect as usual."
+
+        logger.critical("Got the disconnect message %s from the firehose. Code: %s, Reason: %s, Description: %s" %
+                        (notice_name, notice.code, notice.reason, notice_description))
+        return True  # To continue listening
