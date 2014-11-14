@@ -43,7 +43,7 @@ class Channel(models.Model):
     def __unicode__(self):
         return self.name
 
-    def connect(self, pid, pid_messenger):
+    def connect(self, pid, pid_messenger=None):
         self.status = True
         self.pid = pid
         self.pid_messenger = pid_messenger
@@ -51,25 +51,8 @@ class Channel(models.Model):
 
     def disconnect(self):
         if self.status:
-            if self.pid_messenger != -1:
-            # Kill process that manages the message queue
-                try:
-                    os.kill(self.pid_messenger, signal.SIGTERM)
-                    logger.info("Messenger has been stopped")
-                    self.pid_messenger = -1
-                except Exception as e:
-                    logger.error("An error occurs trying to kill the process that runs the messenger. Internal message: "
-                                 "%s" % e)
-            if self.pid != -1:
-                # Kill the process that listens Twitter's stream
-                try:
-                    os.kill(self.pid, signal.SIGTERM)
-                    logger.info("Listener has been stopped")
-                    self.pid = -1
-                except Exception as e:
-                    logger.error("An error occurs trying to kill the process that runs the listener. Internal message: "
-                                 "%s" % e)
-            # Flag that the channel is off-line
+            self.pid_messenger = -1
+            self.pid = -1
             self.status = False
             self.save()
         else:
@@ -435,7 +418,23 @@ class MetaChannel():
 
     def disconnect(self, channel_name):
         channel_name = channel_name.lower()
-        Channel.objects.get(name=channel_name).disconnect()
+        ch = Channel.objects.get(name=channel_name)
+        if ch.pid != -1:
+            if self._terminate_process(ch.pid):
+                logger.info("Messenger has been stopped")
+        if ch.pid_messenger != -1:
+            if self._terminate_process(ch.pid_messenger):
+                logger.info("Listener has been stopped")
+        ch.disconnect()
+
+    def _terminate_process(self, pid):
+        try:
+            os.kill(pid, signal.SIGTERM)
+            return True
+        except Exception as e:
+            logger.error("An error occurs trying to kill the process that runs the messenger. Internal message: "
+                         "%s" % e)
+            return False
 
     def set_initiatives(self, channel_name, initiative_ids):
         channel_name = channel_name.lower()
@@ -1270,12 +1269,12 @@ class Twitter(SocialNetwork):
         proc_listener = multiprocessing.Process(target=stream.filter, args=[self.accounts, self.hashtags])
         connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
         proc_listener.start()
-        logger.info("Starting to listen Twitter Stream")
+        logger.info("Starting to listen Twitter Stream. PID: %s" % proc_listener.pid)
         # Spawn off a process that manages the queue of messages to send
         proc_messenger = multiprocessing.Process(target=self.run_msg_dispatcher)
         connection.close()  # Close the connection to DB to avoid the child process uses it, which crashes MySQL engine
         proc_messenger.start()
-        logger.info("Message Dispatcher on")
+        logger.info("Message Dispatcher on. PID: %s" % proc_messenger.pid)
         self.channel.connect(proc_listener.pid, proc_messenger.pid)
 
     def _post_public(self, message, payload):
