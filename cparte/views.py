@@ -4,8 +4,10 @@ from django.shortcuts import render
 from django.conf import settings
 
 import apps
+import ConfigParser
 import logging
 import models
+import os
 
 
 logger = logging.getLogger(__name__)
@@ -28,8 +30,11 @@ def listen(request, channel_name):
         apps.channel_middleware.listen(initiatives, channel_name)
     else:
         logger.error("The channel is not enabled")
-    if hasattr(settings, 'URL_PREFIX') and settings.URL_PREFIX:
-        redirect_url = "%s/admin/cparte/channel/" % settings.URL_PREFIX
+    config = ConfigParser.ConfigParser()
+    config.read(os.path.join(settings.BASE_DIR, "cparte/config"))
+    subdomain = config.get("app","subdomain")
+    if subdomain:
+        redirect_url = "%s/admin/cparte/channel/" % subdomain
     else:
         redirect_url = "/admin/cparte/channel/"
     return HttpResponseRedirect(redirect_url)
@@ -44,8 +49,11 @@ def hangup(request, channel_name):
         logger.info("Channel %s was forced to disconnect" % channel_name)
     else:
         logger.info("Channel %s was already disconnected" % channel_name)
-    if hasattr(settings, 'URL_PREFIX') and settings.URL_PREFIX:
-        redirect_url = "%s/admin/cparte/channel/" % settings.URL_PREFIX
+    config = ConfigParser.ConfigParser()
+    config.read(os.path.join(settings.BASE_DIR, "cparte/config"))
+    subdomain = config.get("app","subdomain")
+    if subdomain:
+        redirect_url = "%s/admin/cparte/channel/" % subdomain
     else:
         redirect_url = "/admin/cparte/channel/"
     return HttpResponseRedirect(redirect_url)

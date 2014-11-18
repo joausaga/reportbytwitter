@@ -87,26 +87,6 @@ class Message(models.Model):
         return self.name
 
 
-class Setting(models.Model):
-    name = models.CharField(max_length=50)
-    description = models.TextField(null=True, blank=True)
-    value = models.TextField()
-    TYPES = (
-        ('INT', 'Integer'),
-        ('STR', 'String')
-    )
-    type = models.CharField(max_length=3, choices=TYPES)
-
-    def __unicode__(self):
-        return "Name: %s - Value: %s" % (self.name, self.value)
-
-    def get_casted_value(self):
-        if self.type == "INT":
-            return int(self.value)
-        else:
-            return self.value
-
-
 class ExtraInfo(models.Model):
     name = models.CharField(max_length=15, help_text="Max length 15 characters")
     description = models.TextField(null=True)
@@ -316,19 +296,6 @@ class SharePost(models.Model):
     similarity = models.IntegerField(default=0)
 
 
-class MsgQueue(models.Model):
-    timestamp = models.DateTimeField(auto_now=True)
-    message_text = models.TextField()
-    recipient_id = models.CharField(max_length=100, null=True)
-    TYPES = (('PU', 'Public'), ('RE', 'Reply'), ('DM', 'Direct Message'))
-    type = models.CharField(max_length=3, choices=TYPES)
-    channel = models.ForeignKey(Channel)
-    payload = models.TextField(null=True)
-
-    def __unicode__(self):
-        return self.message_text
-
-
 """ Domain Models
 """
 
@@ -419,20 +386,20 @@ class ChannelMiddleware():
             logger.error("Unknown channel: %s" % channel_name)
             return None
 
-    def send_message(self, message, type_msg, recipient_id, payload, channel_name):
+    def send_message(self, channel_name, message, type_msg, payload, recipient_id=None):
 
         if channel_name.lower() == "twitter":
-            ret = self.twitter.send_message(message, type_msg, recipient_id, payload)
+            ret = self.twitter.send_message(message, type_msg, payload, recipient_id)
             url = self.twitter.get_url()
             channel = self.twitter
             channel_obj = self.twitter.get_channel_obj()
         elif channel_name.lower() == "facebook":
-            ret = self.facebook.send_message(message, type_msg, recipient_id, payload)
+            ret = self.facebook.send_message(message, type_msg, payload, recipient_id)
             url = self.facebook.get_url()
             channel = self.facebook
             channel_obj = self.facebook.get_channel_obj()
         elif channel_name.lower() == "googleplus":
-            ret = self.gplus.send_message(message, type_msg, recipient_id, payload)
+            ret = self.gplus.send_message(message, type_msg, payload, recipient_id)
             url = self.gplus.get_url()
             channel = self.gplus
             channel_obj = self.gplus.get_channel_obj()

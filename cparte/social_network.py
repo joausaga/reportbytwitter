@@ -25,7 +25,7 @@ class SocialNetwork():
         raise NotImplementedError
 
     @abc.abstractmethod
-    def send_message(self, message, type_msg, recipient_id, payload):
+    def send_message(self, message, type_msg, payload, recipient_id):
         """Send message through the channel"""
         raise NotImplementedError
 
@@ -124,7 +124,7 @@ class Twitter(SocialNetwork):
         self.stream = tweepy.Stream(self.auth_handler, listener)
         self.stream.filter(follow=self.accounts, track=self.hashtags)
 
-    def send_message(self, message, type_msg, recipient_id, payload):
+    def send_message(self, message, type_msg, payload, recipient_id):
         auth_writer = self.auth_initiative_writer(payload["initiative_id"])
         if auth_writer:
             api = tweepy.API(auth_handler=auth_writer, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
@@ -351,7 +351,7 @@ class Facebook(SocialNetwork):
     def listen(self):
         raise NotImplementedError
 
-    def send_message(self, message, type_msg, recipient_id, payload):
+    def send_message(self, message, type_msg, payload, recipient_id):
         raise NotImplementedError
 
     def get_post(self, id_post):
@@ -414,7 +414,7 @@ class GooglePlus(SocialNetwork):
     def listen(self):
         raise NotImplementedError
 
-    def send_message(self, message, type_msg, recipient_id, payload):
+    def send_message(self, message, type_msg, payload, recipient_id):
         raise NotImplementedError
 
     def get_post(self, id_post):

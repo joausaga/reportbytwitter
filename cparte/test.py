@@ -1,5 +1,7 @@
 from django.test import TestCase
-from cparte.models import PostManager, Twitter, Setting
+from cparte.models import ChannelMiddleware
+from cparte.social_network import Twitter
+from cparte.post_manager import PostManager
 import ConfigParser
 import re
 
@@ -13,6 +15,8 @@ class TwitterTestCase(TestCase):
     config.read('cparte/config')
 
     def setUp(self):
+        middleware = ChannelMiddleware()
+
         auth = tweepy.OAuthHandler(self.config.get('twitter_api','consumer_key'), self.config.get('twitter_api','consumer_secret'))
         auth.set_access_token(self.config.get('twitter_api','token'), self.config.get('twitter_api','token_secret'))
         api = tweepy.API(auth)
@@ -24,12 +28,12 @@ class TwitterTestCase(TestCase):
         statuses = api.statuses_lookup(tweet_ids)
         self.save_testing_statuses(statuses)
 
-        twitter = Twitter()
+        twitter = Twitter(middleware)
         twitter.set_initiatives([1])
         twitter.set_accounts([1])
-        self.manager = PostManager(twitter)
-        self.limit_incorrect_inputs = Setting.objects.get(name="limit_wrong_inputs").get_casted_value()
-        self.limit_incorrect_requests = Setting.objects.get(name="limit_wrong_requests").get_casted_value()
+        self.manager = PostManager(middleware)
+        self.limit_incorrect_inputs = self.config.getint('app', 'limit_wrong_input')
+        self.limit_incorrect_requests = self.config.getint('app', 'limit_wrong_request')
 
     # Add here id of testing tweets
     def get_array_testing_tweets(self):
@@ -84,7 +88,8 @@ class TwitterTestCase(TestCase):
                            "print_name": "@" + author.screen_name, "url": self.url + author.screen_name,
                            "description": author.description, "language": author.lang,
                            "posts_count": author.statuses_count, "friends": author.friends_count,
-                           "followers": author.followers_count, "groups": author.listed_count}
+                           "followers": author.followers_count, "groups": author.listed_count},
+                "channel": "twitter"
                 }
 
     def build_url_post(self, status):
@@ -95,6 +100,7 @@ class TwitterTestCase(TestCase):
         for hashtag in status.entities['hashtags']:
             hashtags.append(hashtag['text'].lower().strip())
         return hashtags
+
 
 class TestAppBehavior(TwitterTestCase):
 

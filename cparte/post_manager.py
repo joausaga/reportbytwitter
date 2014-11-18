@@ -13,7 +13,8 @@ import traceback
 logger = logging.getLogger(__name__)
 
 
-# The class that does all the magic. All the business logic is encapsulated here
+# The class that does all the magic.
+# All the business logic is encapsulated here
 class PostManager():
     ch_middleware = None
     settings = {}
@@ -28,24 +29,22 @@ class PostManager():
         self.ch_middleware = middleware
         config = ConfigParser.ConfigParser()
         config.read(os.path.join(settings.BASE_DIR, "cparte/config"))
-        self._set_settings()
-        if self.settings['short_url']:
-            self.url_shortener = build(serviceName=self.settings['urlshortener_api_name'],
-                                       version=self.settings['urlshortener_api_version'],
+        url_shortener_enabled = config.getboolean('url_shortener', 'enabled')
+        if url_shortener_enabled:
+            self.url_shortener = build(serviceName=config.get('url_shortener', 'api_name'),
+                                       version=config.get('url_shortener', 'api_version'),
                                        developerKey=config.get('url_shortener', 'key'))
         else:
             self.url_shortener = None
+        self._set_settings(config)
 
-    def _set_settings(self):
+    def _set_settings(self, config):
         try:
-            self.settings['limit_wrong_inputs'] = models.Setting.objects.get(name="limit_wrong_inputs").get_casted_value()
-            self.settings['limit_wrong_requests'] = models.Setting.objects.get(name="limit_wrong_requests").get_casted_value()
-            self.settings['datetime_format'] = models.Setting.objects.get(name="datetime_format").value
-            self.settings['urlshortener_api_name'] = models.Setting.objects.get(name="gurlshortener_api_name").value
-            self.settings['urlshortener_api_version'] = models.Setting.objects.get(name="gurlshortener_api_version").value
-            self.settings['short_url'] = models.Setting.objects.get(name="short_url").get_casted_value()
-        except models.Setting.DoesNotExist as e:
-            e_msg = "Unknown setting %s, the post manager cannot be started" % e
+            self.settings['limit_wrong_inputs'] = config.getint('app', 'limit_wrong_input')
+            self.settings['limit_wrong_requests'] = config.getint('app', 'limit_wrong_request')
+            self.settings['datetime_format'] = config.get('datetime', 'format')
+        except Exception as e:
+            e_msg = "Configuration key error. " % e
             logger.critical(e_msg)
             raise Exception(e_msg)
 
@@ -522,8 +521,8 @@ class PostManager():
                        'author_id': author_id, 'campaign_id': challenge.campaign.id, 'challenge_id': challenge.id,
                        'initiative_short_url': short_url}
             #payload_json = json.dumps(payload)
-            self.ch_middleware.send_message(message=msg, type_msg="RE", recipient_id=post["id"], payload=payload,
-                                            channel_name=post["channel"])
+            self.ch_middleware.send_message(channel_name=post["channel"], message=msg, type_msg="RE",
+                                            payload=payload, recipient_id=post["id"])
 
     def _do_short_initiative_url(self, long_url):
         try:

@@ -4,13 +4,14 @@ from django.conf import settings
 from django.contrib import messages
 from django import forms
 from django.forms.models import BaseInlineFormSet
-from cparte.social_network import Twitter
-from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, \
-                          ContributionPost, Account, SharePost
+from cparte.models import Initiative, Campaign, Challenge, Channel, ExtraInfo, Message, AppPost, ContributionPost, \
+                          Account, SharePost, ChannelMiddleware
 
+import ConfigParser
 import logging
 import json
 import gettext
+import os
 
 MESSAGE_TAGS = {
     messages.SUCCESS: 'alert-success success',
@@ -275,11 +276,6 @@ class InitiativeAdmin(admin.ModelAdmin):
     form = InitiativeForm
 
 
-class SettingAdmin(admin.ModelAdmin):
-    list_display = ('id','name', 'description', 'value')
-    ordering = ('id',)
-
-
 class ExtraInfoAdmin(admin.ModelAdmin):
     list_display = ('id','name', 'description', 'style_answer', 'format_answer')
     ordering = ('id',)
@@ -379,18 +375,15 @@ class AppPostAdmin(admin.ModelAdmin):
         return qs.filter(category="EN")
 
     def save_model(self, request, obj, form, change):
-        if obj.channel.name == "Twitter":
-            social_network = Twitter()
-        else:
-            raise Exception("Unknown channel named %s" % obj.channel.name)
+        middleware = ChannelMiddleware()
 
-        if social_network:
+        if middleware:
             payload = {'parent_post_id': None, 'type_msg': obj.category,
                        'post_id': None, 'initiative_id': obj.initiative.id,
                        'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id,
                        'author_id': None, 'initiative_short_url': None}
             payload_json = json.dumps(payload)
-            social_network.send_message(message=obj.text, type_msg="PU", payload=payload_json)
+            middleware.send_message(channel_name=obj.channel.name, message=obj.text, type_msg="PU", payload=payload_json)
             messages.success(request, "The app post has been created and queued to be sent. After sending it will be "
                                       "listed here. ")
         else:
@@ -427,9 +420,12 @@ class ChannelAdmin(admin.ModelAdmin):
         return qs
 
     def row_actions(self, obj):
-        if hasattr(settings, 'URL_PREFIX') and settings.URL_PREFIX:
-            listen_url_href = """{0}/cparte/listen/{1}""".format(settings.URL_PREFIX, obj.name)
-            hangup_url_href = """{0}/cparte/hangup/{1}""".format(settings.URL_PREFIX, obj.name)
+        config = ConfigParser.ConfigParser()
+        config.read(os.path.join(settings.BASE_DIR, "cparte/config"))
+        subdomain = config.get("app","subdomain")
+        if subdomain:
+            listen_url_href = """{0}/cparte/listen/{1}""".format(subdomain, obj.name)
+            hangup_url_href = """{0}/cparte/hangup/{1}""".format(subdomain, obj.name)
         else:
             listen_url_href = """/cparte/listen/{0}""".format(obj.name)
             hangup_url_href = """/cparte/hangup/{0}""".format(obj.name)
@@ -479,7 +475,6 @@ admin.site.register(Campaign, CampaignAdmin)
 admin.site.register(Channel, ChannelAdmin)
 admin.site.register(Message, MessageInfoAdmin)
 admin.site.register(ExtraInfo, ExtraInfoAdmin)
-admin.site.register(Setting, SettingAdmin)
 admin.site.register(AppPost, AppPostAdmin)
 admin.site.register(ContributionPost, ContributionPostAdmin)
 admin.site.register(Account, AccountAdmin)
