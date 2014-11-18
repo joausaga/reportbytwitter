@@ -1,34 +1,31 @@
+from celery.result import AsyncResult
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.conf import settings
-from cparte.models import ContributionPost
 
+import apps
 import logging
-import pickle
+import models
 
 
 logger = logging.getLogger(__name__)
 
 
 def index(request):
-    return HttpResponse("Welcome to the CParte application!")
+    return HttpResponse("Welcome to Participa!")
 
 
 def posts(request):
-    contribution_posts = ContributionPost.objects.all()
+    contribution_posts = models.ContributionPost.objects.all()
     context = {'posts': contribution_posts}
     return render(request, 'cparte/posts.html', context)
 
 
 def listen(request, channel_name):
     initiatives = [1, 2]   # Add here the ids of the initiatives
-    str_meta_channel = request.session['meta_channel']
-    meta_channel = pickle.loads(str_meta_channel)
-    if meta_channel.channel_enabled(channel_name):
-        meta_channel.authenticate(channel_name)
-        meta_channel.set_initiatives(channel_name, initiatives)
-        meta_channel.listen(channel_name)
-        request.session['meta_channel'] = pickle.dumps(meta_channel)
+
+    if apps.channel_middleware.channel_enabled(channel_name):
+        apps.channel_middleware.listen(initiatives, channel_name)
     else:
         logger.error("The channel is not enabled")
     if hasattr(settings, 'URL_PREFIX') and settings.URL_PREFIX:
@@ -39,10 +36,14 @@ def listen(request, channel_name):
 
 
 def hangup(request, channel_name):
-    str_meta_channel = request.session['meta_channel']
-    meta_channel = pickle.loads(str_meta_channel)
-    meta_channel.disconnect(channel_name)
-    request.session['meta_channel'] = pickle.dumps(meta_channel)
+    task_id = apps.channel_middleware.disconnect(channel_name)
+    task = AsyncResult(task_id)
+    if not task.ready():
+        # Force to hangup if the channel wasn't disconnected already
+        task.revoke(terminate=True)
+        logger.info("Channel %s was forced to disconnect" % channel_name)
+    else:
+        logger.info("Channel %s was already disconnected" % channel_name)
     if hasattr(settings, 'URL_PREFIX') and settings.URL_PREFIX:
         redirect_url = "%s/admin/cparte/channel/" % settings.URL_PREFIX
     else:

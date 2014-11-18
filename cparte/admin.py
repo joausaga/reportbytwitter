@@ -4,12 +4,12 @@ from django.conf import settings
 from django.contrib import messages
 from django import forms
 from django.forms.models import BaseInlineFormSet
-from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, Twitter, \
-                          ContributionPost, Account, MetaChannel, SharePost
+from cparte.social_network import Twitter
+from cparte.models import Initiative, Campaign, Challenge, Channel, Setting, ExtraInfo, Message, AppPost, \
+                          ContributionPost, Account, SharePost
 
 import logging
 import json
-import pickle
 import gettext
 
 MESSAGE_TAGS = {
@@ -390,7 +390,7 @@ class AppPostAdmin(admin.ModelAdmin):
                        'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id,
                        'author_id': None, 'initiative_short_url': None}
             payload_json = json.dumps(payload)
-            social_network.queue_message(message=obj.text, type_msg="PU", payload=payload_json)
+            social_network.send_message(message=obj.text, type_msg="PU", payload=payload_json)
             messages.success(request, "The app post has been created and queued to be sent. After sending it will be "
                                       "listed here. ")
         else:
@@ -424,14 +424,6 @@ class ChannelAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super(ChannelAdmin, self).get_queryset(request)
-        # Create a persistent object that will manage the enabled social network channels
-        if not 'meta_channel' in request.session:
-            channels = []
-            for channel in qs:
-                if channel.enabled:
-                    channels.append(channel.name.lower())
-            mt = MetaChannel(channels)
-            request.session['meta_channel'] = pickle.dumps(mt)
         return qs
 
     def row_actions(self, obj):
