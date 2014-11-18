@@ -3,3 +3,5 @@
 .idea
 *.log
 config
+settings.py
+TODO
