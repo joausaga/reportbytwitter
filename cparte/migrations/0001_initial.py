@@ -169,8 +169,8 @@ class Migration(migrations.Migration):
                 ('hashtag', models.CharField(help_text=b"Max length 14 characters (do not include '#')", unique=True, max_length=14)),
                 ('url', models.URLField(null=True, blank=True)),
                 ('language', models.CharField(max_length=3, choices=[(b'en', b'English'), (b'es', b'Spanish'), (b'it', b'Italian')])),
-                ('account', models.ForeignKey(to='cparte.Account')),
                 ('social_sharing_message', models.CharField(help_text=b'Default text for social sharing buttons', max_length=200, null=True, blank=True)),
+                ('account', models.ForeignKey(to='cparte.Account')),
             ],
             options={
             },
