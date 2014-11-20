@@ -3,7 +3,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.conf import settings
 
-import apps
+import channel_middleware
 import ConfigParser
 import logging
 import models
@@ -26,10 +26,7 @@ def posts(request):
 def listen(request, channel_name):
     initiatives = [1, 2]   # Add here the ids of the initiatives
 
-    if apps.channel_middleware.channel_enabled(channel_name):
-        apps.channel_middleware.listen(initiatives, channel_name)
-    else:
-        logger.error("The channel is not enabled")
+    channel_middleware.connect(initiatives, channel_name)
     config = ConfigParser.ConfigParser()
     config.read(os.path.join(settings.BASE_DIR, "cparte/config"))
     subdomain = config.get("app","subdomain")
@@ -41,11 +38,11 @@ def listen(request, channel_name):
 
 
 def hangup(request, channel_name):
-    task_id = apps.channel_middleware.disconnect(channel_name)
+    task_id = channel_middleware.disconnect(channel_name)
     task = AsyncResult(task_id)
     if not task.ready():
         # Force to hangup if the channel wasn't disconnected already
-        task.revoke(terminate=True)
+        task.revoke(terminate=True, signal='SIGTERM')
         logger.info("Channel %s was forced to disconnect" % channel_name)
     else:
         logger.info("Channel %s was already disconnected" % channel_name)

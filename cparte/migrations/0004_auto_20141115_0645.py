@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
             model_name='channel',
             name='pid',
             field=models.CharField(max_length=50, null=True, editable=False),
-            preserve_default=True,
+            #preserve_default=True,
         ),
     ]

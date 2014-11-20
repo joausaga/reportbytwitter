@@ -1,15 +1,4 @@
 from django.db import models
-from django.utils import timezone
-
-import social_network
-import logging
-import post_manager
-
-logger = logging.getLogger(__name__)
-
-
-""" Data Models
-"""
 
 LANGUAGES = (
     ('en', 'English'),
@@ -26,23 +15,24 @@ class Channel(models.Model):
     max_length_msgs = models.IntegerField(null=True, blank=True, help_text="Maximum length of messages to send through"
                                                                            "this channel from the application. Leave it"
                                                                            " blank for unlimited lengths.")
-    pid = models.CharField(max_length=50, editable=False, null=True)
+    streaming_pid = models.CharField(max_length=50, editable=False, null=True)
+    session_info = models.TextField(editable=False, null=True)
 
     def __unicode__(self):
         return self.name
 
-    def connect(self, pid):
+    def connect(self, streaming_pid, session_info):
         self.status = True
-        self.pid = pid
+        self.streaming_pid = streaming_pid
+        self.session_info = session_info
         self.save()
 
     def disconnect(self):
         if self.status:
-            self.pid = ""
+            self.streaming_pid = ""
+            self.session_info = ""
             self.status = False
             self.save()
-        else:
-            logger.info("Channel already off!")
 
 
 class Account(models.Model):
@@ -294,266 +284,3 @@ class SharePost(models.Model):
     re_posts = models.IntegerField(default=0)   # e.g. Share in Facebook, RT in Twitter
     bookmarks = models.IntegerField(default=0)  # e.g. Favourite in Twitter
     similarity = models.IntegerField(default=0)
-
-
-""" Domain Models
-"""
-
-
-# Social Network Middleware Channel
-class ChannelMiddleware():
-    twitter = None
-    facebook = None
-    gplus = None
-
-    def __init__(self):
-        enabled_channels = Channel.objects.filter(enabled=True)
-        for channel in enabled_channels:
-            if channel.name.lower() == "twitter":
-                self.twitter = social_network.Twitter(self)
-            elif channel.name.lower() == "facebook":
-                self.facebook = social_network.Facebook(self)
-            elif channel.name.lower() == "googleplus":
-                self.gplus = social_network.GooglePlus(self)
-            else:
-                logger.error("Unknown channel: %s" % channel.name)
-        self.post_manager = post_manager.PostManager(self)
-
-    def set_initiatives(self, initiative_ids, channel_name):
-        initiatives = None
-        hashtags = None
-        account_ids = []
-        for id_initiative in initiative_ids:
-            try:
-                initiative = Initiative.objects.get(pk=id_initiative)
-            except Initiative.DoesNotExist:
-                e_msg = "Does not exist an initiative identified with the id %s" % id_initiative
-                logger.critical(e_msg)
-                raise Exception(e_msg)
-
-            if initiatives:
-                initiatives.append(initiative)
-                hashtags.append(initiative.hashtag)
-            else:
-                initiatives = [initiative]
-                hashtags = [initiative.hashtag]
-            account_ids.append(initiative.account.id)
-
-            # Add to the array of hashtags the hashtags of the initiative's campaigns
-            for campaign in initiative.campaign_set.all():
-                if campaign.hashtag is not None:
-                    hashtags.append(campaign.hashtag)
-                # Add to the array of hashtags the hashtags of the campaign's challenges
-                for challenge in campaign.challenge_set.all():
-                    hashtags.append(challenge.hashtag)
-        accounts = self.set_accounts(account_ids)
-
-        if channel_name.lower() == "twitter":
-            self.twitter.set_initiatives(initiatives)
-            self.twitter.set_hashtags(hashtags)
-            self.twitter.set_accounts(accounts)
-        elif channel_name.lower() == "facebook":
-            self.facebook.set_initiatives(initiatives)
-            self.facebook.set_hashtags(hashtags)
-            self.facebook.set_accounts(accounts)
-        elif channel_name.lower() == "googleplus":
-            self.gplus.set_initiatives(initiatives)
-            self.gplus.set_hashtags(hashtags)
-            self.gplus.set_accounts(accounts)
-        else:
-            logger.error("Unknown channel: %s" % channel_name)
-
-    @staticmethod
-    def set_accounts(account_ids):
-        accounts = []
-        for id_account in account_ids:
-            try:
-                accounts.append(Account.objects.get(pk=id_account).id_in_channel)
-            except Account.DoesNotExist:
-                e_msg = "Does not exist an account identified with the id %s" % id_account
-                logger.critical(e_msg)
-                raise Exception(e_msg)
-        return accounts
-
-    def get_account_ids(self, channel_name):
-        if channel_name.lower() == "twitter":
-            return self.twitter.get_accounts()
-        elif channel_name.lower() == "facebook":
-            return self.facebook.get_accounts()
-        elif channel_name.lower() == "googleplus":
-            return self.gplus.get_accounts()
-        else:
-            logger.error("Unknown channel: %s" % channel_name)
-            return None
-
-    def send_message(self, channel_name, message, type_msg, payload, recipient_id=None):
-
-        if channel_name.lower() == "twitter":
-            ret = self.twitter.send_message(message, type_msg, payload, recipient_id)
-            url = self.twitter.get_url()
-            channel = self.twitter
-            channel_obj = self.twitter.get_channel_obj()
-        elif channel_name.lower() == "facebook":
-            ret = self.facebook.send_message(message, type_msg, payload, recipient_id)
-            url = self.facebook.get_url()
-            channel = self.facebook
-            channel_obj = self.facebook.get_channel_obj()
-        elif channel_name.lower() == "googleplus":
-            ret = self.gplus.send_message(message, type_msg, payload, recipient_id)
-            url = self.gplus.get_url()
-            channel = self.gplus
-            channel_obj = self.gplus.get_channel_obj()
-        else:
-            logger.error("Unknown channel: %s" % channel_name)
-            return
-        if ret and ret['delivered']:
-            response_dict = self.to_dict(ret['response'], url)
-            app_post = self.save_post_db(payload, response_dict, channel_obj)
-            if app_post.id is None:
-                if channel.delete_post(response_dict) is not None:
-                    logger.error("The app post couldn't be saved into the db, so its corresponding post was deleted "
-                                 "from %s" % channel_name)
-                else:
-                    logger.critical("The app post couldn't be saved into the db, but its corresponding post couldn't be "
-                                    "delete from %s. The app may be in an inconsistent state" % channel_name)
-            else:
-                logger.info("The app post with the id: %s was created" % app_post.id)
-
-    @staticmethod
-    def to_dict(post, url):
-        return {"id": post.id_str, "text": post.text,
-                "url": url + post.author.screen_name + "/status/" + post.id_str}
-
-    @staticmethod
-    def save_post_db(payload, response, channel_obj):
-        parent_post_id = payload['parent_post_id']
-        post_id = payload['post_id']
-        type_msg = payload['type_msg']
-        initiative_short_url = payload['initiative_short_url']
-        initiative = Initiative.objects.get(pk=payload['initiative_id'])
-        campaign = Campaign.objects.get(pk=payload['campaign_id'])
-        challenge = Challenge.objects.get(pk=payload['challenge_id'])
-        recipient_id = payload['author_id']
-        if parent_post_id is not None:
-            try:
-                app_parent_post = AppPost.objects.get(id_in_channel=parent_post_id)
-            except AppPost.DoesNotExist:
-                app_parent_post = None
-        else:
-            app_parent_post = None
-        try:
-            contribution_parent_post = ContributionPost.objects.get(id_in_channel=post_id)
-        except ContributionPost.DoesNotExist:
-            contribution_parent_post = None
-        app_post = AppPost(id_in_channel=response["id"], datetime=timezone.now(), text=response["text"],
-                           url=response["url"], app_parent_post=app_parent_post, initiative=initiative, campaign=campaign,
-                           contribution_parent_post=contribution_parent_post, challenge=challenge,
-                           channel=channel_obj, votes=0, re_posts=0, bookmarks=0, delivered=True,
-                           category=type_msg, payload=initiative_short_url, recipient_id=recipient_id, answered=False)
-        app_post.save(force_insert=True)
-        return app_post
-
-    def get_channel_obj(self, channel_name):
-        channel_obj = None
-
-        if channel_name.lower() == "twitter":
-            channel_obj = self.twitter.get_channel_obj()
-        elif channel_name.lower() == "facebook":
-            channel_obj = self.facebook.get_channel_obj()
-        elif channel_name.lower() == "googleplus":
-            channel_obj = self.gplus.get_channel_obj()
-        else:
-            logger.error("Unknown channel: %s" % channel_name)
-
-        return channel_obj
-
-    def get_author_obj(self, author, channel_name):
-        try:
-            channel_obj = self.get_channel_obj(channel_name)
-            return Author.objects.get(id_in_channel=author["id"], channel=channel_obj.id)
-        except Author.DoesNotExist:
-            return None
-
-    def register_new_author(self, author, channel_name):
-        channel_obj = self.get_channel_obj(channel_name)
-        new_author = Author(name=author["name"], screen_name=author["screen_name"], id_in_channel=author["id"],
-                            channel=channel_obj, friends=author["friends"], followers=author["followers"],
-                            url=author["url"], description=author["description"], language=author["language"],
-                            posts_count=author["posts_count"])
-        new_author.save(force_insert=True)
-        return new_author
-
-    def channel_enabled(self, channel_name):
-        if channel_name.lower() == "twitter" and self.twitter:
-            return True
-        elif channel_name.lower() == "facebook" and self.facebook:
-            return True
-        elif channel_name.lower() == "googleplus" and self.gplus:
-            return True
-        else:
-            logger.error("Unknown channel: %s" % channel_name)
-            return False
-
-    def listen(self, initiative_ids, channel_name):
-        channel_name = channel_name.lower()
-        channel = Channel.objects.get(name=channel_name)
-
-        self.set_initiatives(initiative_ids, channel_name)
-        if channel_name.lower() == "twitter":
-            logger.info("Start listening Twitter channel")
-            task = self.twitter.listen.delay()
-            task_id = task.id
-        elif channel_name.lower() == "facebook":
-            self.facebook.listen()
-            task_id = None
-        elif channel_name.lower() == "googleplus":
-            self.gplus.listen()
-            task_id = None
-        else:
-            logger.error("Unknown channel: %s" % channel_name)
-            return None
-        channel.connect(task_id)
-
-    def disconnect(self, channel_name):
-        channel_name = channel_name.lower()
-        try:
-            ch = Channel.objects.get(name=channel_name)
-            task_id = ch.pid
-            if channel_name.lower() == "twitter":
-                self.twitter.hangup()
-            elif channel_name.lower() == "facebook":
-                self.facebook.hangup()
-            elif channel_name.lower() == "googleplus":
-                self.gplus.hangup()
-            else:
-                logger.error("Unknown channel: %s" % channel_name)
-                return None
-            ch.disconnect()
-            return task_id
-        except Channel.DoesNotExist:
-            logger.error("Cannot disconnect, channel %s does not exists" % channel_name)
-
-    # Check whether the text of the post has the hashtags the identifies the initiative
-    def has_initiative_hashtags(self, post, channel_name):
-        initiatives = None
-
-        if channel_name.lower() == "twitter":
-            initiatives = self.twitter.get_initiatives()
-        elif channel_name.lower() == "facebook":
-            initiatives = self.facebook.get_initiatives()
-        elif channel_name.lower() == "googleplus":
-            initiatives = self.gplus.get_initiatives()
-        else:
-            logger.error("Unknown channel: %s" % channel_name)
-
-        for initiative in initiatives:
-            initiative_hashtag = initiative.hashtag
-            for post_hashtag in post['hashtags']:
-                if post_hashtag == initiative_hashtag.lower().strip():
-                    return initiative
-        return None
-
-    def process_post(self, post):
-        self.post_manager.manage_post(post)
-
-

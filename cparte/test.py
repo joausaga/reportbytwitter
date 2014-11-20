@@ -1,10 +1,10 @@
 from django.test import TestCase
-from cparte.models import ChannelMiddleware
-from cparte.social_network import Twitter
-from cparte.post_manager import PostManager
-import ConfigParser
-import re
+from cparte.models import Channel
 
+import channel_middleware
+import ConfigParser
+import json
+import re
 import tweepy
 
 
@@ -15,8 +15,6 @@ class TwitterTestCase(TestCase):
     config.read('cparte/config')
 
     def setUp(self):
-        middleware = ChannelMiddleware()
-
         auth = tweepy.OAuthHandler(self.config.get('twitter_api','consumer_key'), self.config.get('twitter_api','consumer_secret'))
         auth.set_access_token(self.config.get('twitter_api','token'), self.config.get('twitter_api','token_secret'))
         api = tweepy.API(auth)
@@ -28,10 +26,9 @@ class TwitterTestCase(TestCase):
         statuses = api.statuses_lookup(tweet_ids)
         self.save_testing_statuses(statuses)
 
-        twitter = Twitter(middleware)
-        twitter.set_initiatives([1])
-        twitter.set_accounts([1])
-        self.manager = PostManager(middleware)
+        channel = Channel.objects.get(name="twitter")
+        session_info = channel_middleware.get_session_info([1])
+        channel.connect("", json.dumps(session_info))
         self.limit_incorrect_inputs = self.config.getint('app', 'limit_wrong_input')
         self.limit_incorrect_requests = self.config.getint('app', 'limit_wrong_request')
 
@@ -111,7 +108,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_new_user_new_challenge":
                 correct_post_new_user_new_challenge = self.to_dict(testing_post['status'])
-        output = self.manager.manage_post(correct_post_new_user_new_challenge)
+        output = channel_middleware.process_post(correct_post_new_user_new_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "request_author_extrainfo")
 
@@ -122,7 +119,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "incorrect_post_new_user_new_challenge":
                 incorrect_post_new_user_new_challenge = self.to_dict(testing_post['status'])
-        output = self.manager.manage_post(incorrect_post_new_user_new_challenge)
+        output = channel_middleware.process_post(incorrect_post_new_user_new_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")
 
@@ -133,7 +130,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_existing_user_new_challenge":
                 correct_post_existing_user_new_challenge = self.to_dict(testing_post['status'])
-        output = self.manager.manage_post(correct_post_existing_user_new_challenge)
+        output = channel_middleware.process_post(correct_post_existing_user_new_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "thanks_contribution")
 
@@ -144,7 +141,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_existing_user_answered_challenge":
                 correct_post_existing_user_answered_challenge = self.to_dict(testing_post['status'])
-        output = self.manager.manage_post(correct_post_existing_user_answered_challenge)
+        output = channel_middleware.process_post(correct_post_existing_user_answered_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "ask_change_contribution")
 
@@ -155,7 +152,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "incorrect_post_existing_user_new_challenge":
                 incorrect_post_existing_user_new_challenge = self.to_dict(testing_post['status'])
-        output = self.manager.manage_post(incorrect_post_existing_user_new_challenge)
+        output = channel_middleware.process_post(incorrect_post_existing_user_new_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")
 
@@ -166,6 +163,6 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "incorrect_post_existing_user_answered_challenge":
                 incorrect_post_existing_user_answered_challenge = self.to_dict(testing_post['status'])
-        output = self.manager.manage_post(incorrect_post_existing_user_answered_challenge)
+        output = channel_middleware.process_post(incorrect_post_existing_user_answered_challenge)
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")

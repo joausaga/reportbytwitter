@@ -5,11 +5,10 @@ from django.contrib import messages
 from django import forms
 from django.forms.models import BaseInlineFormSet
 from cparte.models import Initiative, Campaign, Challenge, Channel, ExtraInfo, Message, AppPost, ContributionPost, \
-                          Account, SharePost, ChannelMiddleware
-
+                          Account, SharePost
+import channel_middleware
 import ConfigParser
 import logging
-import json
 import gettext
 import os
 
@@ -375,19 +374,12 @@ class AppPostAdmin(admin.ModelAdmin):
         return qs.filter(category="EN")
 
     def save_model(self, request, obj, form, change):
-        middleware = ChannelMiddleware()
-
-        if middleware:
-            payload = {'parent_post_id': None, 'type_msg': obj.category,
-                       'post_id': None, 'initiative_id': obj.initiative.id,
-                       'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id,
-                       'author_id': None, 'initiative_short_url': None}
-            payload_json = json.dumps(payload)
-            middleware.send_message(channel_name=obj.channel.name, message=obj.text, type_msg="PU", payload=payload_json)
-            messages.success(request, "The app post has been created and queued to be sent. After sending it will be "
-                                      "listed here. ")
-        else:
-            raise Exception("The social network object couldn't be created")
+        payload = {'parent_post_id': None, 'type_msg': obj.category, 'post_id': None, 'initiative_id': obj.initiative.id,
+                   'campaign_id': obj.campaign.id, 'challenge_id': obj.challenge.id, 'author_id': None,
+                   'initiative_short_url': None}
+        channel_middleware.send_message(channel_name=obj.channel.name, message=obj.text, type_msg="PU", payload=payload)
+        messages.success(request, "The app post has been created and queued to be sent. After sending it will be "
+                                  "listed here. ")
 
 
 class ContributionPostAdmin(admin.ModelAdmin):

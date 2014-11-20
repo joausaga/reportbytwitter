@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
             model_name='challenge',
             name='accept_changes',
             field=models.BooleanField(default=True),
-            preserve_default=True,
+            #preserve_default=True,
         ),
     ]

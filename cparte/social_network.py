@@ -4,43 +4,58 @@ from celery.contrib.methods import task_method
 
 import abc
 import ast
+import channel_middleware
 import ConfigParser
 import logging
 import models
 import os
 import re
+import signal
 import tweepy
 
 
 logger = logging.getLogger(__name__)
 
 
+# ----------------------------------------------------------
 # Abstract Class. All Social Networks must inherit from it.
+# ----------------------------------------------------------
 class SocialNetwork():
     __metaclass__ = abc.ABCMeta
 
+    @staticmethod
     @abc.abstractmethod
-    def listen(self):
+    def authenticate():
+        """Authenticate to the channel"""
+        raise NotImplementedError
+
+    @staticmethod
+    @abc.abstractmethod
+    def listen(accounts, hashtags):
         """Listen the channel"""
         raise NotImplementedError
 
+    @staticmethod
     @abc.abstractmethod
-    def send_message(self, message, type_msg, payload, recipient_id):
+    def send_message(message, type_msg, payload, recipient_id, channel_url):
         """Send message through the channel"""
         raise NotImplementedError
 
+    @staticmethod
     @abc.abstractmethod
-    def get_post(self, id_post):
+    def get_post(id_post):
         """Get a post previously published in the channel and identified by id_post"""
         raise NotImplementedError
 
+    @staticmethod
     @abc.abstractmethod
-    def delete_post(self, id_post):
+    def delete_post(id_post):
         """Delete the post identified by id_post"""
         raise NotImplementedError
 
+    @staticmethod
     @abc.abstractmethod
-    def get_info_user(self, id_user):
+    def get_info_user(id_user):
         """Get information about a particular user"""
         raise NotImplementedError
 
@@ -50,82 +65,43 @@ class SocialNetwork():
         """Authenticate post writer"""
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def set_initiatives(self, initiatives):
-        """Set social network initiatives"""
+    @staticmethod
+    def to_dict(post, url):
+        """Get a dictionary with the information of the post"""
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def get_initiatives(self):
-        """Get initiatives associated to social network"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def set_accounts(self, accounts):
-        """Set social network accounts"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def get_accounts(self):
-        """Get accounts associated to social network"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def set_hashtags(self, hashtags):
-        """Set social network hashtags"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def get_url(self):
-        """Get social network url"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def get_channel_obj(self):
-        """Get channel ORM model object"""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def hangup(self):
-        """Disconnect the streaming"""
-        raise NotImplementedError
-
-
-"""
-Twitter
-"""
+#---------------------------------
+# Twitter Client
+#---------------------------------
 
 
 class Twitter(SocialNetwork):
-    auth_handler = None
-    channel_obj = None
-    config = None
     initiatives = None
     accounts = None
     hashtags = None
-    middleware = None
-    stream = None
 
-    def __init__(self, middleware):
-        self.channel_obj = models.Channel.objects.get(name="twitter")
-        self.config = ConfigParser.ConfigParser()
-        self.config.read(os.path.join(settings.BASE_DIR, "cparte/config"))
+    @staticmethod
+    def authenticate():
+        config = ConfigParser.ConfigParser()
+        config.read(os.path.join(settings.BASE_DIR, "cparte/config"))
         # Authenticate
-        self.auth_handler = tweepy.OAuthHandler(self.config.get('twitter_api', 'consumer_key'),
-                                                self.config.get('twitter_api', 'consumer_secret'))
-        self.auth_handler.set_access_token(self.config.get('twitter_api', 'token'),
-                                           self.config.get('twitter_api', 'token_secret'))
-        self.middleware = middleware
+        auth_handler = tweepy.OAuthHandler(config.get('twitter_api', 'consumer_key'),
+                                           config.get('twitter_api', 'consumer_secret'))
+        auth_handler.set_access_token(config.get('twitter_api', 'token'),
+                                      config.get('twitter_api', 'token_secret'))
+        return auth_handler
 
     @current_app.task(filter=task_method)
-    def listen(self):
-        # Initialize listener
-        listener = TwitterListener(self.middleware)
-        self.stream = tweepy.Stream(self.auth_handler, listener)
-        self.stream.filter(follow=self.accounts, track=self.hashtags)
+    def listen(accounts, hashtags):
+        auth_handler = Twitter.authenticate()
+        listener = TwitterListener()
+        #stream = tweepy.Stream(auth_handler, listener)
+        stream = TwitterClientWrapper(auth_handler, listener)
+        stream.filter(follow=accounts, track=hashtags, stall_warnings=True)
 
-    def send_message(self, message, type_msg, payload, recipient_id):
-        auth_writer = self.auth_initiative_writer(payload["initiative_id"])
+    @staticmethod
+    def send_message(message, type_msg, payload, recipient_id, channel_url):
+        auth_writer = Twitter.auth_initiative_writer(payload["initiative_id"])
         if auth_writer:
             api = tweepy.API(auth_handler=auth_writer, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
             try:
@@ -142,7 +118,7 @@ class Twitter(SocialNetwork):
                     author_id = payload['author_id']
                     response = api.send_direct_message(user_id=author_id, text=message)
                     logger.info("The message '%s' has been sent directly to %s through Twitter" % (message, author_id))
-                return {'delivered': True, 'response': response}
+                return {'delivered': True, 'response': Twitter.to_dict(response, channel_url)}
             except tweepy.TweepError as e:
                 reason = ast.literal_eval(e.reason)
                 logger.error("The post '%s' couldn't be delivered. Reason: %s" % (message, reason[0]['message']))
@@ -151,19 +127,25 @@ class Twitter(SocialNetwork):
             logger.error("The write couldn't be authenticated, the message couldn't be sent.")
             return None
 
-    def get_post(self, id_post):
-        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+    @staticmethod
+    def get_post(id_post):
+        auth_handler = Twitter.authenticate()
+        api = tweepy.API(auth_handler=auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         return api.get_status(id_post)
 
-    def delete_post(self, post):
-        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+    @staticmethod
+    def delete_post(post):
+        auth_handler = Twitter.authenticate()
+        api = tweepy.API(auth_handler=auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         try:
             return api.destroy_status(post["id"])
         except tweepy.TweepError, e:
             logger.error("The post %s couldn't be destroyed. %s" % (post["id"], e.reason))
 
-    def get_info_user(self, id_user):
-        api = tweepy.API(auth_handler=self.auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+    @staticmethod
+    def get_info_user(id_user):
+        auth_handler = Twitter.authenticate()
+        api = tweepy.API(auth_handler=auth_handler, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         return api.get_user(id_user)
 
     @staticmethod
@@ -178,39 +160,31 @@ class Twitter(SocialNetwork):
                          "won't be delivered")
             return None
 
-    def set_initiatives(self, initiatives):
-        self.initiatives = initiatives
+    @staticmethod
+    def to_dict(post, url):
+        return {"id": post.id_str, "text": post.text, "url": url + post.author.screen_name + "/status/" + post.id_str}
 
-    def get_initiatives(self):
-        return self.initiatives
 
-    def set_accounts(self, accounts):
-        self.accounts = accounts
+# Tweepy Stream Class Wrapper
+# Created to define a handler to manage the SIGTERM signal sent by
+# celery task revoke
+class TwitterClientWrapper(tweepy.Stream):
 
-    def get_accounts(self):
-        return self.accounts
+    def __init__(self, auth_handler, listener):
+        super(TwitterClientWrapper, self).__init__(auth_handler, listener)
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
 
-    def set_hashtags(self, hashtags):
-        self.hashtags = hashtags
-
-    def get_url(self):
-        return self.channel_obj.url
-
-    def get_channel_obj(self):
-        return self.channel_obj
-
-    def hangup(self):
-        if self.stream:
-            self.stream.disconnect()
+    def signal_term_handler(self, signal, frame):
+        logger.info("Disconnecting twitter streaming...")
+        self.disconnect()
+        self._thread.join()  # Not sure why this works (self._thread shouldn't exist). Magic!
 
 
 class TwitterListener(tweepy.StreamListener):
-    middleware = None
     url = "https://twitter.com/"
 
-    def __init__(self, middleware):
+    def __init__(self):
         super(TwitterListener, self).__init__()
-        self.middleware = middleware
 
     def on_status(self, status):
         try:
@@ -222,7 +196,7 @@ class TwitterListener(tweepy.StreamListener):
             retweet = None
         status_dict = self.get_tweet_dict(status)
         status_dict["org_post"] = retweet
-        self.middleware.process_post(status_dict)
+        channel_middleware.process_post(status_dict)
         return True
 
     def get_tweet_dict(self, status):
@@ -328,128 +302,75 @@ class TwitterListener(tweepy.StreamListener):
             logger.critical("Error in the method on_disconnect. Message: %s" % e)
         return True  # To continue listening
 
+    def on_warning(self, notice):
+        logger.warning("Got the following warning message: %s" % notice["message"])
 
-"""
-Facebook
-"""
+#---------------------------------
+# Facebook Client
+#---------------------------------
 
 
 class Facebook(SocialNetwork):
-    auth_handler = None
-    channel_obj = None
-    config = None
-    initiatives = None
-    accounts = None
-    hashtags = None
-    middleware = None
-    stream = None
 
-    def __init__(self, middleware):
-        self.middleware = middleware
+    @staticmethod
+    def listen(accounts, hashtags):
         raise NotImplementedError
 
-    def listen(self):
+    @staticmethod
+    def send_message(message, type_msg, payload, recipient_id, channel_url):
         raise NotImplementedError
 
-    def send_message(self, message, type_msg, payload, recipient_id):
+    @staticmethod
+    def get_post(id_post):
         raise NotImplementedError
 
-    def get_post(self, id_post):
+    @staticmethod
+    def delete_post(post):
         raise NotImplementedError
 
-    def delete_post(self, post):
-        raise NotImplementedError
-
-    def get_info_user(self, id_user):
+    @staticmethod
+    def get_info_user(id_user):
         raise NotImplementedError
 
     @staticmethod
     def auth_initiative_writer(initiative_id):
         raise NotImplementedError
 
-    def set_initiatives(self, initiatives):
+    @staticmethod
+    def to_dict(post, url):
         raise NotImplementedError
 
-    def get_initiatives(self):
-        raise NotImplementedError
-
-    def set_accounts(self, accounts):
-        raise NotImplementedError
-
-    def get_accounts(self):
-        raise NotImplementedError
-
-    def set_hashtags(self, hashtags):
-        raise NotImplementedError
-
-    def get_url(self):
-        raise NotImplementedError
-
-    def get_channel_obj(self):
-        raise NotImplementedError
-
-    def hangup(self):
-        raise NotImplementedError
-
-
-"""
-Google Plus
-"""
+#---------------------------------
+# Google Plus Client
+#---------------------------------
 
 
 class GooglePlus(SocialNetwork):
-    auth_handler = None
-    channel_obj = None
-    config = None
-    initiatives = None
-    accounts = None
-    hashtags = None
-    middleware = None
-    stream = None
 
-    def __init__(self, middleware):
-        self.middleware = middleware
+    @staticmethod
+    def listen(accounts, hashtags):
         raise NotImplementedError
 
-    def listen(self):
+    @staticmethod
+    def send_message(message, type_msg, payload, recipient_id, channel_url):
         raise NotImplementedError
 
-    def send_message(self, message, type_msg, payload, recipient_id):
+    @staticmethod
+    def get_post(id_post):
         raise NotImplementedError
 
-    def get_post(self, id_post):
+    @staticmethod
+    def delete_post(post):
         raise NotImplementedError
 
-    def delete_post(self, post):
-        raise NotImplementedError
-
-    def get_info_user(self, id_user):
+    @staticmethod
+    def get_info_user(id_user):
         raise NotImplementedError
 
     @staticmethod
     def auth_initiative_writer(initiative_id):
         raise NotImplementedError
 
-    def set_initiatives(self, initiatives):
-        raise NotImplementedError
-
-    def get_initiatives(self):
-        raise NotImplementedError
-
-    def set_accounts(self, accounts):
-        raise NotImplementedError
-
-    def get_accounts(self):
-        raise NotImplementedError
-
-    def set_hashtags(self, hashtags):
-        raise NotImplementedError
-
-    def get_url(self):
-        raise NotImplementedError
-
-    def get_channel_obj(self):
-        raise NotImplementedError
-
-    def hangup(self):
+    @staticmethod
+    def to_dict(post, url):
         raise NotImplementedError
