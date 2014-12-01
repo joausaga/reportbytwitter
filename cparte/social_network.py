@@ -196,7 +196,7 @@ class TwitterListener(tweepy.StreamListener):
             retweet = None
         status_dict = self.get_tweet_dict(status)
         status_dict["org_post"] = retweet
-        channel_middleware.process_post(status_dict)
+        channel_middleware.process_post(status_dict, "twitter")
         return True
 
     def get_tweet_dict(self, status):

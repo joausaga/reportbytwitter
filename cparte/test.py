@@ -108,7 +108,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_new_user_new_challenge":
                 correct_post_new_user_new_challenge = self.to_dict(testing_post['status'])
-        output = channel_middleware.process_post(correct_post_new_user_new_challenge)
+        output = channel_middleware.process_post(correct_post_new_user_new_challenge, "twitter")
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "request_author_extrainfo")
 
@@ -119,7 +119,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "incorrect_post_new_user_new_challenge":
                 incorrect_post_new_user_new_challenge = self.to_dict(testing_post['status'])
-        output = channel_middleware.process_post(incorrect_post_new_user_new_challenge)
+        output = channel_middleware.process_post(incorrect_post_new_user_new_challenge, "twitter")
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")
 
@@ -130,7 +130,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_existing_user_new_challenge":
                 correct_post_existing_user_new_challenge = self.to_dict(testing_post['status'])
-        output = channel_middleware.process_post(correct_post_existing_user_new_challenge)
+        output = channel_middleware.process_post(correct_post_existing_user_new_challenge, "twitter")
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "thanks_contribution")
 
@@ -141,7 +141,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "correct_post_existing_user_answered_challenge":
                 correct_post_existing_user_answered_challenge = self.to_dict(testing_post['status'])
-        output = channel_middleware.process_post(correct_post_existing_user_answered_challenge)
+        output = channel_middleware.process_post(correct_post_existing_user_answered_challenge, "twitter")
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "ask_change_contribution")
 
@@ -152,7 +152,7 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "incorrect_post_existing_user_new_challenge":
                 incorrect_post_existing_user_new_challenge = self.to_dict(testing_post['status'])
-        output = channel_middleware.process_post(incorrect_post_existing_user_new_challenge)
+        output = channel_middleware.process_post(incorrect_post_existing_user_new_challenge, "twitter")
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")
 
@@ -163,6 +163,6 @@ class TestAppBehavior(TwitterTestCase):
         for testing_post in self.testing_posts:
             if testing_post['type'] == "incorrect_post_existing_user_answered_challenge":
                 incorrect_post_existing_user_answered_challenge = self.to_dict(testing_post['status'])
-        output = channel_middleware.process_post(incorrect_post_existing_user_answered_challenge)
+        output = channel_middleware.process_post(incorrect_post_existing_user_answered_challenge, "twitter")
         self.assertNotEqual(output.category, None)
         self.assertEqual(output.category, "incorrect_answer")

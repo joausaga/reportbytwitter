@@ -9,7 +9,18 @@ import post_manager
 logger = logging.getLogger(__name__)
 
 
-def process_post(post):
+def process_post(post, channel_name):
+    channel_name = channel_name.lower()
+    channel = Channel.objects.get(name=channel_name)
+    ts_last_message = channel.last_message
+    now = timezone.now()
+    if ts_last_message is None:
+        channel.update_last_message_ts(now)
+    else:
+        delta = now - ts_last_message
+        # Update last message timestamp every 15 minutes
+        if (delta.seconds/60) >= 15:
+            channel.update_last_message_ts(now)
     post_manager.manage_post(post)
 
 

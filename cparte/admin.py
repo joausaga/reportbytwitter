@@ -404,7 +404,7 @@ class ContributionPostAdmin(admin.ModelAdmin):
 
 
 class ChannelAdmin(admin.ModelAdmin):
-    list_display = ('id','name', 'enabled', 'status', 'row_actions')
+    list_display = ('id','name', 'enabled', 'status', 'row_actions', 'last_message')
     ordering = ('id',)
 
     def get_queryset(self, request):

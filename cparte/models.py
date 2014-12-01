@@ -12,11 +12,12 @@ class Channel(models.Model):
     enabled = models.BooleanField(default=False)
     status = models.BooleanField(default=False, blank=True, editable=False)
     url = models.URLField(null=True)
-    max_length_msgs = models.IntegerField(null=True, blank=True, help_text="Maximum length of messages to send through"
-                                                                           "this channel from the application. Leave it"
-                                                                           " blank for unlimited lengths.")
+    max_length_msgs = models.IntegerField(null=True, blank=True, help_text="Maximum length of messages to send through "
+                                                                           "this channel from the application. Leave it "
+                                                                           "blank for unlimited lengths.")
     streaming_pid = models.CharField(max_length=50, editable=False, null=True)
     session_info = models.TextField(editable=False, null=True)
+    last_message = models.DateTimeField(null=True, editable=False)  # Last message timestamp
 
     def __unicode__(self):
         return self.name
@@ -32,7 +33,12 @@ class Channel(models.Model):
             self.streaming_pid = ""
             self.session_info = ""
             self.status = False
+            self.last_message = None
             self.save()
+
+    def update_last_message_ts(self, timestamp):
+        self.last_message = timestamp
+        self.save()
 
 
 class Account(models.Model):
