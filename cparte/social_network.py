@@ -11,6 +11,7 @@ import models
 import os
 import re
 import signal
+import traceback
 import tweepy
 
 
@@ -97,7 +98,10 @@ class Twitter(SocialNetwork):
         listener = TwitterListener()
         #stream = tweepy.Stream(auth_handler, listener)
         stream = TwitterClientWrapper(auth_handler, listener)
-        stream.filter(follow=accounts, track=hashtags, stall_warnings=True)
+        try:
+            stream.filter(follow=accounts, track=hashtags, stall_warnings=True)
+        except Exception as e:
+            logger.critical(traceback.format_exc())
 
     @staticmethod
     def send_message(message, type_msg, payload, recipient_id, channel_url):
