@@ -19,13 +19,37 @@ participation initiatives under a flexible structure that enables to efficiently
 opinions, ideas, and suggestions generated during these initiatives. 
 
 It is social network "agnostic" making possible to reach different social network communities simultaneously, which favors
-inclusiveness and diversity. It can be used as a stand-alone application or it can be integrated with already existing 
-tools to enrich and complement already existing civic participation initiatives with the expertise, knowledge, and opinions 
-of the biggest online communities present in social networks.
+inclusiveness and diversity. It can be used as a stand-alone application or it can be integrated with existing 
+tools to enrich and complement active civic participation initiatives with the expertise, knowledge, and opinions 
+of social network communities.
 
 
 How is it work?
 ---------------
+The general purpose **social networks** are the main instrument in which participa is based on. It exploits the power
+and advantages (free, user-friendliness, worldwide connectivity, real-time information sharing) of these means to reach and 
+engage the biggest virtual communities into online civic participation initiatives. 
+
+The functioning of participa is based on **hashtags**, these are the key elements on which the initiatives supported by 
+participa leverage on. Because of this, it can work only with hashtag-supported social networking sites, such as Twitter,
+Facebook, Google Plus, and Instagram. Currently, *only Twitter is available* but next Facebook and Google Plus will be 
+also included.
+
+The remaining elements of participa's model are the initiatives, campaigns, and challenges, which are all logically
+related. The **initiatives** are the 
+
+
+
+Apart from the social networking sites, **participa** based its model on a few additional elements 
+
+To design **Participa** we followed a simplistic approach and based its model on a few set of elements and actors. One side
+of the line there is an initiative's organizer, illustrated as a *Public Institution* in the figure but it can be a politician, 
+an elected authority, or even a civic organization, while in the other side there are the citizens, who using the already
+familiar soca
+
+First, 
+in **participa** there is always the initiative's organizer, which is outlined in the following figure as the *Public Institution* but it can
+be a politician, an elected authority, or even civic organization. This organizer is the responsible of creating 
 
 ![model](https://dl.dropboxusercontent.com/u/55956367/participa_model.png "Participa Model")
 
