@@ -65,7 +65,10 @@ opinions/ideas/suggestions to an external platform.
 Use Case
 -----------
 
-California Report Card
+Participa is currently being used as part of the project [California Report Card](http://www.californiareportcard.org), a jointly
+coordinated effort between the [Data and Democracy Initiative](http://citris-uc.org/initiatives/democracy/) of the Center 
+for Information Technology Research in the Interest of Society (CITRIS) of the University of California, Berkeley and the 
+Lt. Governor of California Gavin Newsom. CRC seeks to involve citizens of California in the government of the state.
 
 Installation
 ------------
