@@ -52,15 +52,15 @@ Participa's operation is divided in four simple steps as it is outlined in the f
 
 ![model](https://dl.dropboxusercontent.com/u/55956367/participa_model.png "Participa Model")
 
-1. A public institution (politician, elected authority, civic organization) creates an initiative and its corresponding 
-campaigns and challenges, together with the hashtags to be used.
+1. A public institution (politician, elected authority, civic organization) creates an initiative, its corresponding 
+campaigns and challenges, and the hashtags to be used.
 2. The initiative's organizer (a public institution in this case) "deploys" the initiative in one or multiple social networks.
 3. Citizens, which are users of the social networks where the initiative was deployed, engage by publishing posts 
-containing the corresponding hashtags of the initiative and the challenge that are answering.
-4. As soon as participa finds a post containing the hashtags of the initiative and challenges, it collects, processes, 
-aggregates and presents to the initiative's organizer in tabular and graphical (upcoming feature) way. The organizer can 
-choose also to send the collected opinions/ideas/suggestions to an external platform, however, high technical skills are 
-required to configure platform to do this.
+containing the hashtags of the initiative and the challenge that are answering.
+4. As soon as participa finds posts containing the hashtags of the initiative and challenges, it collects, processes them. 
+Through a tabular-based dashboard the answers are presented to the initiative's organizer. Features to graphically 
+represent the answers are upcoming. While setting the initiative, the organizer can choose also to send the collected 
+opinions/ideas/suggestions to an external platform, however, high technical skills are required to do it.
 
 Use Case
 -----------
