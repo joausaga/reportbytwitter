@@ -72,7 +72,8 @@ Lt. Governor of California Gavin Newsom.
 By employing a web-based application California Report Card engages citizens in discussion about timely issues. It also
 allows to 
 
-![model](https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.png "CRC Screenshot")
+<img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.png" height="50%" width="50%" />
+
 
 Installation
 ------------
