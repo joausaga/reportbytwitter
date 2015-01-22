@@ -59,8 +59,8 @@ campaigns and challenges, and the hashtags to be used.
 containing the hashtags of the initiative and the challenge that are answering.
 4. As soon as participa finds posts containing the hashtags of the initiative and challenges, it collects, processes them. 
 Through a tabular-based dashboard the answers are presented to the initiative's organizer. Features to graphically 
-represent the answers are upcoming. While setting the initiative, the organizer can choose also to send the collected 
-opinions/ideas/suggestions to an external platform, however, high technical skills are required to do it.
+represent the answers are upcoming. While setting the initiative, the organizer can program the platform to send the collected 
+opinions/ideas/suggestions to an external platform.
 
 Use Case
 -----------
