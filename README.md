@@ -74,6 +74,8 @@ allows to
 
 <img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.png" height="50%" width="50%" />
 
+<blockquote class="twitter-tweet" lang="en"><p><a href="https://twitter.com/hashtag/affordcolleges?src=hash">#affordcolleges</a> C <a href="https://twitter.com/hashtag/careportcard?src=hash">#careportcard</a></p>&mdash; Brandie M. Nonnecke (@BNonnecke) <a href="https://twitter.com/BNonnecke/status/528249127193174016">October 31, 2014</a></blockquote>
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 
 Installation
 ------------
