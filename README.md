@@ -26,7 +26,7 @@ of social network communities.
 
 Conceptual Model
 ----------------
-The general purpose **social networks** are the main instrument in which participa is based on. It exploits the power
+General purpose **social networks** are the main instrument in which participa is based on. It exploits the power
 and advantages (free, user-friendliness, worldwide connectivity, real-time information sharing) of these means to reach and 
 engage the biggest virtual communities into online civic participation initiatives. 
 
@@ -68,27 +68,60 @@ Use Case
 Participa is currently being used as part of the project [California Report Card](http://www.californiareportcard.org), a jointly
 coordinated effort between the [Data and Democracy Initiative](http://citris-uc.org/initiatives/democracy/) of the Center 
 for Information Technology Research in the Interest of Society (CITRIS) of the University of California, Berkeley and the 
-Lt. Governor of California Gavin Newsom. CRC seeks to involve citizens of California in the government of the state.
+Lt. Governor of California Gavin Newsom. 
+
+By employing a web-based application California Report Card engages citizens in discussion about timely issues. It also
+allows to 
 
 Installation
 ------------
 
-1. Add "cparte" to your INSTALLED_APPS setting like this:
+1. Clone the repository `git clone https://github.com/joausaga/participa.git`
 
+2. Execute `pip install -r requirements.txt` inside the folder of the repository to install dependencies 
+
+3. Create a mysql database
+
+4. Rename the file participa/settings.py.sample to participa/settings.py
+
+5. Set the configuration parameters of the database in settings.py 
+
+     ```
+        DATABASES = {
+            'default': {
+                ...,
+                'NAME': '',
+                'USER': '',
+                'PASSWORD': '',
+                'HOST': '',
+                'PORT': '',
+            }
+        }
       ```
-      INSTALLED_APPS = (
-          ...
-          'cparte',
-      )
-      ```
 
-2. Include the cparte URLconf in your project urls.py like this:
+6. Run `python manage.py migrate` to set up the database schema.
 
-      `url(r'^cparte/', include('cparte.urls')),`
+7. Create a [Twitter application](https://apps.twitter.com)
 
-3. Run `python manage.py migrate` to create cparte database schema.
+7. Rename the file cparte/config.sample to cparte/config
 
-4. Load initial settings `python manage.py loaddata config_data.json`
+8. Apply the following configuration to cparte/config (only it is indicated the parameters that are needed to change)
+
+    ```
+        [app]
+        subdomain = ""  (if running in localhost)
+        
+        [url_shortener]
+        enabled = False
+        
+        [twitter_api]
+        consumer_key = YOUR_TWITTER_APP_CONSUMER_KEY
+        consumer_secret = YOUR_TWITTER_APP_CONSUMER_SECRET
+        token = YOUR_TWITTER_APP_TOKEN
+        token_secret = YOUR_TWITTER_APP_TOKEN_SECRET
+    ```
+
+9. Load initial settings `python manage.py loaddata config_data.json`
 
 Technology
 ----------
