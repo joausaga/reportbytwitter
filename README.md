@@ -1,9 +1,9 @@
 Participa
 =========
 
-Improving democracy is probably one of today’s most challenging public concern. Motivated by the Open Government efforts 
-of the [Obama’s administration](https://petitions.whitehouse.gov), an increasing number of governments, public institutions, 
-politicians and civic organizations have started making significant efforts toward more inclusive, transparent and participatory 
+Improving democracy is probably one of today’s most challenging public concern. Motivated by the [Open Government](https://petitions.whitehouse.gov) 
+efforts of the Obama’s administration, an increasing number of governments, public institutions, politicians and 
+civic organizations have started making significant efforts toward more inclusive, transparent and participatory 
 administrations. In this sense, technology is playing a crucial role as a facilitator of the ever-growing initiatives that 
 seek to involve citizens in public consultations and decision-making processes oriented to address public interest issues, 
 such as law reforms and innovations in the public sector. 
@@ -13,7 +13,7 @@ large and diverse group of participants is key to success in such initiatives. H
 tools work practically independent from today's biggest online communities found in social networking sites, such as Facebook, 
 Twitter, or Google Plus.  
 
-**Participa** is a platform created to facilitate public institutions/politicians/elected authorities the execution of
+**Participa** is a platform created to facilitate public institutions, politicians, and elected authorities the execution of
 public consultants, idea campaigns, and opinion polls directly in social networking sites. It allows to organize civic 
 participation initiatives under a flexible structure that enables to efficiently aggregate, process and make sense of citizens' 
 opinions, ideas, and suggestions generated during these initiatives. 
