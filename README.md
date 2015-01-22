@@ -59,8 +59,8 @@ campaigns and challenges, and the hashtags to be used.
 containing the hashtags of the initiative and the challenge that are answering.
 4. As soon as participa finds posts containing the hashtags of the initiative and challenges, it collects, processes them. 
 Through a tabular-based dashboard the answers are presented to the initiative's organizer. Features to graphically 
-represent the answers are upcoming. While setting the initiative, the organizer can program the platform to send the collected 
-opinions/ideas/suggestions to an external platform.
+represent the answers are upcoming. In addition, the platform can be hacked to send the collected opinions/ideas/suggestions
+to an external platform.
 
 Use Case
 -----------
@@ -78,7 +78,7 @@ Installation
 
 1. Clone the repository `git clone https://github.com/joausaga/participa.git`
 
-2. Execute `pip install -r requirements.txt` inside the folder of the repository to install dependencies 
+2. Go inside the repository folder and execute `pip install -r requirements.txt` to install dependencies 
 
 3. Create a mysql database
 
@@ -88,13 +88,13 @@ Installation
 
      ```
         DATABASES = {
-            'default': {
+            ...
                 'NAME': '',
                 'USER': '',
                 'PASSWORD': '',
                 'HOST': '',
                 'PORT': '',
-            }
+            ...
         }
       ```
 
