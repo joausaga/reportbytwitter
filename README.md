@@ -4,7 +4,7 @@ Participa
 Improving democracy is probably one of today’s most challenging public concern. Motivated by the [Open Government](https://petitions.whitehouse.gov) 
 efforts of the Obama’s administration, an increasing number of governments, public institutions, politicians and 
 civic organizations have started making significant efforts toward more inclusive, transparent and participatory 
-administrations. In this sense, technology is playing a crucial role as a facilitator of the ever-growing initiatives that 
+administrations. In this sense, technology has been playing a crucial role as a facilitator of the ever-growing initiatives that 
 seek to involve citizens in public consultations and decision-making processes oriented to address public interest issues, 
 such as law reforms and innovations in the public sector. 
 
@@ -26,6 +26,8 @@ of the biggest online communities present in social networks.
 
 How is it work?
 ---------------
+
+![model](https://dl.dropboxusercontent.com/u/55956367/participa_model.png)
 
 1. A public institution, government agency, or politician creates an initiative. campaign to collect opinions/ideas.  
 2. The campaign is deployed in one or more hashtag-supported social networks. 
