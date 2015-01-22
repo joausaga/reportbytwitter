@@ -84,12 +84,11 @@ Installation
 
 4. Rename the file participa/settings.py.sample to participa/settings.py
 
-5. Set the configuration parameters of the database in settings.py 
+5. Set the following configuration parameters of the database in settings.py 
 
      ```
         DATABASES = {
             'default': {
-                ...,
                 'NAME': '',
                 'USER': '',
                 'PASSWORD': '',
@@ -123,15 +122,15 @@ Installation
 
 9. Load initial settings `python manage.py loaddata config_data.json`
 
-Technology
+Technologies
 ----------
 
-1. [Django Framework > 1.7](https://www.djangoproject.com/) `pip install Django`
-2. [MySQL](http://www.mysql.com) database and its corresponding python package `pip install MySQL-python`
-3. [Tweepy](http://www.tweepy.org) a python-based Twitter API client `pip install tweepy`
-4. [Django Admin Bootstrapped](https://riccardo.forina.me/bootstrap-your-django-admin-in-3-minutes) App `pip install django-admin-bootstrapped`
-5. [Django Bootstrap3](https://github.com/dyve/django-bootstrap3) App `pip install django-bootstrap3`
-6. [Google API Client](https://developers.google.com/api-client-library/python/) `pip install google-api-python-client`
-7. [Celery](http://www.celeryproject.org) `pip install celery`
-8. [Celery for Django](http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html) `pip install django-celery`
+1. [Django Framework > 1.7](https://www.djangoproject.com/)
+2. [MySQL](http://www.mysql.com) database and its corresponding python package
+3. [Tweepy](http://www.tweepy.org) a python-based Twitter API client
+4. [Django Admin Bootstrapped](https://riccardo.forina.me/bootstrap-your-django-admin-in-3-minutes) App
+5. [Django Bootstrap3](https://github.com/dyve/django-bootstrap3) App
+6. [Google API Client](https://developers.google.com/api-client-library/python/)
+7. [Celery](http://www.celeryproject.org)
+8. [Celery for Django](http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html)
 9. [Rabbit MQ](http://www.rabbitmq.com/install-generic-unix.html)
