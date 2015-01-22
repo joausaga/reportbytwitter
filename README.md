@@ -27,12 +27,11 @@ of social network communities.
 Conceptual Model
 ----------------
 General purpose **social networks** are the main instrument in which participa is based on. It exploits the power
-and advantages (free, user-friendliness, worldwide connectivity, real-time information sharing) of these means to reach and 
+and advantages (user-friendliness, worldwide connectivity, real-time information sharing) of these means to reach and 
 engage the biggest virtual communities into online civic participation initiatives. 
 
-The functioning of participa is based on **hashtags**, these are the key elements on which the initiatives supported by 
-participa leverage on. Because of this, it can work only with hashtag-supported social networking sites, such as Twitter,
-Facebook, Google Plus, and Instagram. Currently, *only Twitter is available*.
+The functioning of participa is based on **hashtags**. Because of this, it can work only with hashtag-supported social 
+networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Currently, *only Twitter is available*.
 
 The remaining concepts of participa's model are the initiatives, campaigns, and challenges, which all are logically
 related. The **initiatives** are the elements in which the details about the public consultants are defined. In the initiative
@@ -72,6 +71,8 @@ Lt. Governor of California Gavin Newsom.
 
 By employing a web-based application California Report Card engages citizens in discussion about timely issues. It also
 allows to 
+
+![model](https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.png "CRC Screenshot")
 
 Installation
 ------------
@@ -124,7 +125,7 @@ Installation
 
 License
 -------
-GPLv3
+MIT
 
 Technologies
 ------------
@@ -132,8 +133,8 @@ Technologies
 1. [Django Framework > 1.7](https://www.djangoproject.com/)
 2. [MySQL](http://www.mysql.com) database and its corresponding python package
 3. [Tweepy](http://www.tweepy.org) a python-based Twitter API client
-4. [Django Admin Bootstrapped](https://riccardo.forina.me/bootstrap-your-django-admin-in-3-minutes) App
-5. [Django Bootstrap3](https://github.com/dyve/django-bootstrap3) App
+4. [Django Admin Bootstrapped App](https://riccardo.forina.me/bootstrap-your-django-admin-in-3-minutes)
+5. [Django Bootstrap3 App](https://github.com/dyve/django-bootstrap3)
 6. [Google API Client](https://developers.google.com/api-client-library/python/)
 7. [Celery](http://www.celeryproject.org)
 8. [Celery for Django](http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html)
