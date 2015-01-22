@@ -32,8 +32,7 @@ engage the biggest virtual communities into online civic participation initiativ
 
 The functioning of participa is based on **hashtags**, these are the key elements on which the initiatives supported by 
 participa leverage on. Because of this, it can work only with hashtag-supported social networking sites, such as Twitter,
-Facebook, Google Plus, and Instagram. Currently, *only Twitter is available* but next Facebook and Google Plus will be 
-also included.
+Facebook, Google Plus, and Instagram. Currently, *only Twitter is available*.
 
 The remaining concepts of participa's model are the initiatives, campaigns, and challenges, which all are logically
 related. The **initiatives** are the elements in which the details about the public consultants are defined. In the initiative
@@ -49,59 +48,19 @@ Further, it is included the explanation of real use case scenario to ground the 
 How is it work?
 ---------------
 
-Four simple steps are
-
-Apart from the social networking sites, **participa** based its model on a few additional elements 
-
-To design **Participa** we followed a simplistic approach and based its model on a few set of elements and actors. One side
-of the line there is an initiative's organizer, illustrated as a *Public Institution* in the figure but it can be a politician, 
-an elected authority, or even a civic organization, while in the other side there are the citizens, who using the already
-familiar soca
-
-First, 
-in **participa** there is always the initiative's organizer, which is outlined in the following figure as the *Public Institution* but it can
-be a politician, an elected authority, or even civic organization. This organizer is the responsible of creating 
+Participa operation is divided in four simple steps as it is outlined in following figure. 
 
 ![model](https://dl.dropboxusercontent.com/u/55956367/participa_model.png "Participa Model")
 
-1. A public institution, government agency, or politician creates an initiative. campaign to collect opinions/ideas.  
-2. The campaign is deployed in one or more hashtag-supported social networks. 
-3. From that moment, every post published in the deployed social network(s) will be automatically gathered and aggregated.
-4. 
- 
-
-
-
-only social networks' native features, 
-like posts and hashtags. It is not another tool to advertise or promote civic participation initiatives inside social networks
-nor a platform to  
- 
- 
-
-. Citizens post their opinions using social media hashtags and 
-cparte delivers them in a measurable and structured way to the public institution (or authority) that is "listening" in 
-the other side of the line.
-
-The extent of participation by the target people is key to success in nowadays internet-mediated
-civic participation practices. Understanding that today's biggest online communities are found in social networking sites,  
-
-However, most of them struggle to get large and diverse se tools all share the same limitation, they operate practically detached from 
-the social networking sites, such Facebook, Twitter, Google Plus. Understanding that 
-
-
-
-In this context, **Participa** has been created with the goal of involving the society at large into 
-
-In this sense, if we want to attract people to democracy life we need to learn to engage them in their own terms. 
-That it is to say, by employing the same technological systems, applications and platforms that they regularly use in their private life.  
-
-Participa was created to is envisioned as a platform which ultimate goal is to enhance the communication between the public and the elected authorities.  
-
-enabling citizens take part on public consultants through general purpose social networks. It allows
-
- It is an on-going project writting in **python-django** and composed of several independent web applications. 
-
-* *cparte* --the only application available so far-- aims at enabling public institutions to stay informed about public opinions and priorities. Citizens post their opinions using social media hashtags and cparte delivers them in a measurable and structured way to the public institution (or authority) that is "listening" in the other side of the line.
+1. A public institution (or it can be also a politician, an elected authority, or even a civic organization) creates an
+initiative and its corresponding campaigns and challenges.
+2. The initiative's organizer (a public institution in this case) "deploys" the initiative in one or multiple social networks.
+3. Citizens, which are users of the social networks where the initiative was deployed, engage by publishing posts 
+containing the corresponding hashtags of the initiative and the challenge that are answering.
+4. As soon as participa finds a post containing the hashtags of the initiative and challenges, it collects, processes, 
+aggregates and presents to the initiative's organizer in tabular and graphical (upcoming feature) way. The organizer can 
+choose also to send the collected opinions/ideas/suggestions to an external platform, however, high technical skills are 
+required to configure platform to do this.
 
 Use Case
 -----------
@@ -128,8 +87,8 @@ Installation
 
 4. Load initial settings `python manage.py loaddata config_data.json`
 
-Dependencies
-------------
+Technology
+----------
 
 1. [Django Framework > 1.7](https://www.djangoproject.com/) `pip install Django`
 2. [MySQL](http://www.mysql.com) database and its corresponding python package `pip install MySQL-python`
