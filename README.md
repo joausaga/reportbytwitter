@@ -2,11 +2,11 @@ Participa
 =========
 
 Improving democracy is probably one of today’s most challenging public concern. Motivated by the Open Government efforts 
-of the Obama’s administration, an increasing number of governments, public institutions, politicians and civic organizations 
-have started making significant efforts toward more inclusive, transparent and participatory administrations. In this sense, 
-technology is playing a crucial role as a facilitator of the ever-growing initiatives that seek to involve citizens in public
-consultations and decision-making processes oriented to address public interest issues, such as law reforms and innovations 
-in the public sector. 
+of the [Obama’s administration](https://petitions.whitehouse.gov), an increasing number of governments, public institutions, 
+politicians and civic organizations have started making significant efforts toward more inclusive, transparent and participatory 
+administrations. In this sense, technology is playing a crucial role as a facilitator of the ever-growing initiatives that 
+seek to involve citizens in public consultations and decision-making processes oriented to address public interest issues, 
+such as law reforms and innovations in the public sector. 
 
 In this context and boosted by the World Wide Web, online civic-engagement practices have been appearing all over the world. Reaching a 
 large and diverse group of participants is key to success in such initiatives. However, most of state of art civic-participation 
