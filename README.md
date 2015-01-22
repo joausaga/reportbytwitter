@@ -98,7 +98,7 @@ Installation
         }
       ```
 
-6. Run `python manage.py migrate` to set up the database schema.
+6. Run `python manage.py migrate` to set up the database schema
 
 7. Create a [Twitter application](https://apps.twitter.com)
 
@@ -122,8 +122,12 @@ Installation
 
 9. Load initial settings `python manage.py loaddata config_data.json`
 
+License
+-------
+GPLv3
+
 Technologies
-----------
+------------
 
 1. [Django Framework > 1.7](https://www.djangoproject.com/)
 2. [MySQL](http://www.mysql.com) database and its corresponding python package
@@ -134,3 +138,9 @@ Technologies
 7. [Celery](http://www.celeryproject.org)
 8. [Celery for Django](http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html)
 9. [Rabbit MQ](http://www.rabbitmq.com/install-generic-unix.html)
+
+Let me know
+-----------
+
+If you use participa, please [write me](mailto:jorgesaldivar@gmail.com) a short message with a link to your project. 
+It is not mandatory, but I will really appreciate it!
