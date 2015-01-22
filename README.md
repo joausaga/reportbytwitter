@@ -27,7 +27,7 @@ of the biggest online communities present in social networks.
 How is it work?
 ---------------
 
-![model](https://dl.dropboxusercontent.com/u/55956367/participa_model.png)
+![model](https://dl.dropboxusercontent.com/u/55956367/participa_model.png "Participa Model")
 
 1. A public institution, government agency, or politician creates an initiative. campaign to collect opinions/ideas.  
 2. The campaign is deployed in one or more hashtag-supported social networks. 
