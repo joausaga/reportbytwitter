@@ -24,8 +24,8 @@ tools to enrich and complement active civic participation initiatives with the e
 of social network communities.
 
 
-Model
------
+Conceptual Model
+----------------
 The general purpose **social networks** are the main instrument in which participa is based on. It exploits the power
 and advantages (free, user-friendliness, worldwide connectivity, real-time information sharing) of these means to reach and 
 engage the biggest virtual communities into online civic participation initiatives. 
@@ -41,8 +41,9 @@ the organizer, e.g. public institutions, elected authorities, politician, civic 
 allow to identify the consultant and the social network in which the consultant will be run. To avoid error collecting the 
 posts related to the consultant the initiative hashtag should be chosen carefully. In participa, each initiative is composed of 
 one or more **campaigns**, which are the phases or stages in which a consultant is divided in. Finally, campaigns contain
-**challenges**, which are the questions, topics, or issues on which the consultant is based on. Further it is included the
-explanation of real use case scenario to ground the concepts.
+**challenges**, which are the questions, topics, or issues on which the consultant is based on. 
+
+Further, it is included the explanation of real use case scenario to ground the concepts.
   
 
 How is it work?
