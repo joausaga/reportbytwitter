@@ -74,8 +74,8 @@ while the right side illustrates the second phase.
 
 Participa is currently being used to enable citizens of California to participate in CRC directly via Twitter. In this case, 
 the model of participa was tuned in the following way. California Report Card and *#careportcard* were defined as the 
-**initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading issue" and "proposing issue", 
-were set as the **campaigns** of the initiatives. The six CRC issues were configured as the **challenges** of the grading campaign, 
+**initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading issues" and "proposing issues", 
+were set as the **campaigns** of the initiative. The six CRC issues were configured as the **challenges** of the grading campaign, 
 while the request for new issues was defined as the challenge of the proposing campaign. Each challenge was associated to
 a unique **hashtag**. Finally, Twitter was chosen as the **social network** to deploy the initiative.
 
