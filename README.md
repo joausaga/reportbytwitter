@@ -1,27 +1,22 @@
 Participa
 =========
 
-Improving democracy is probably one of today’s most challenging public concern. Motivated by the [Open Government](https://petitions.whitehouse.gov) 
+Improving democracy is probably one of today’s biggest societal challenges. Motivated by the [Open Government](https://petitions.whitehouse.gov) 
 efforts of the Obama’s administration, an increasing number of governments, public institutions, politicians and 
-civic organizations have started making significant efforts toward more inclusive, transparent and participatory 
-administrations. In this sense, technology has been playing a crucial role as a facilitator of the ever-growing initiatives that 
-seek to involve citizens in public consultations and decision-making processes oriented to address public interest issues, 
-such as law reforms and innovations in the public sector. 
+civic organizations have started to take actions toward more inclusive, transparent and participatory administrations. 
+In this context and boosted by the World Wide Web, online civic-engagement practices have been appearing all over the world
+seeking to involve citizens in public consultations and decision-making processes oriented to address public interest issues, 
+such as law reforms, policy making and innovations in the public sector. Reaching large and diverse groups of participants 
+is key to success in such initiatives. 
 
-In this context and boosted by the World Wide Web, online civic-engagement practices have been appearing all over the world. Reaching a 
-large and diverse group of participants is key to success in such initiatives. However, most of state of art civic-participation 
-tools work practically independent from today's biggest online communities found in social networking sites, such as Facebook, 
-Twitter, or Google Plus.  
-
-**Participa** is a platform created to facilitate public institutions, politicians, and elected authorities the execution of
-public consultants, idea campaigns, and opinion polls directly in social networking sites. It allows to organize civic 
-participation initiatives under a flexible structure that enables to efficiently aggregate, process and make sense of citizens' 
-opinions, ideas, and suggestions generated during these initiatives. 
-
-It is social network "agnostic" making possible to reach different social network communities simultaneously, which favors
-inclusiveness and diversity. It can be used as a stand-alone application or it can be integrated with existing 
-tools to enrich and complement active civic participation initiatives with the expertise, knowledge, and opinions 
-of social network communities.
+Understanding that the biggest and diverse online communities are found in social networking sites, such as Facebook, 
+Twitter, or Google Plus, we have created **participa** with the aim at supporting the execution of public consultants, 
+idea campaigns, and opinion polls directly in social networking sites. It provides a flexible and generic model that
+enables public institutions, politicians, and elected authorities to efficiently organize, run, the information generated 
+during the civic participation initiatives. It is social network "agnostic" making possible to reach different social 
+network communities simultaneously, favoring inclusiveness and diversity. It can be used as a stand-alone application or 
+it can be integrated with existing tools to enrich and complement civic participation initiatives with the expertise, 
+knowledge, and opinions of social network communities.
 
 
 Conceptual Model
@@ -103,7 +98,7 @@ Installation
 
 4. Rename the file participa/settings.py.sample to participa/settings.py
 
-5. Set the following configuration parameters of the database in settings.py 
+5. Set the configuration parameters of the database in settings.py 
 
      ```
         DATABASES = {
