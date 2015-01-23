@@ -4,19 +4,21 @@ Participa
 Improving democracy is probably one of today’s biggest societal challenges. Motivated by the [Open Government](https://petitions.whitehouse.gov) 
 efforts of the Obama’s administration, an increasing number of governments, public institutions, politicians and 
 civic organizations have started to take actions toward more inclusive, transparent and participatory administrations. 
-In this context and boosted by the World Wide Web, online civic-engagement practices have been appearing all over the world
-seeking to involve citizens in public consultations and decision-making processes oriented to address public interest issues, 
-such as law reforms, policy making and innovations in the public sector. Reaching large and diverse groups of participants 
-is key to success in such initiatives. 
+Boosted by the World Wide Web, online civic-engagement practices have been appearing all over the world seeking to involve 
+citizens in public consultations and decision-making processes oriented to address public interest issues, such as law reforms, 
+policy making and innovations in the public sector. Reaching large and diverse groups of participants is key to success 
+in such initiatives. 
 
-Understanding that the biggest and diverse online communities are found in social networking sites, such as Facebook, 
-Twitter, or Google Plus, we have created **participa** with the aim at supporting the execution of public consultants, 
-idea campaigns, and opinion polls directly in social networking sites. It provides a flexible and generic model that
-enables public institutions, politicians, and elected authorities to efficiently organize, run, the information generated 
-during the civic participation initiatives. It is social network "agnostic" making possible to reach different social 
-network communities simultaneously, favoring inclusiveness and diversity. It can be used as a stand-alone application or 
-it can be integrated with existing tools to enrich and complement civic participation initiatives with the expertise, 
-knowledge, and opinions of social network communities.
+Understanding that the the biggest virtual communities are found nowadays in social networking sites, such as Facebook, 
+Twitter, or Google Plus, we are interested in involving them them into the emerging internet-mediated civic participation 
+initiatives. In this sense, **Participa** is an effort to: (i) support the execution of public consultants, idea campaigns, 
+and opinion polls directly in social networking sites; and (ii) enrich and complement existing online civic participation 
+initiatives with the expertise, knowledge, and opinions generated within social network communities. 
+
+It provides a flexible and generic model that enables public institutions, politicians, and elected authorities to 
+efficiently organize, run, and process the information generated during the civic participation initiatives. It is social 
+network "agnostic" making possible to reach different social network communities simultaneously, favoring inclusiveness 
+and diversity. It can be used as a stand-alone application or it can be integrated with already using existing tools.
 
 
 Conceptual Model
