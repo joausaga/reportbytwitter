@@ -1,7 +1,7 @@
 [app]
 limit_wrong_input = 10
 limit_wrong_request = 10
-subdomain = subdomain_name_under_which_the_project_was_installed
+subdomain = ""
 
 [datetime]
 format = %H:%M:%S
@@ -11,7 +11,7 @@ api_name = urlshortener
 api_version = v1
 api_url = https://www.googleapis.com/auth/urlshortener
 key = your_url_shorterner_service_key
-enabled = True
+enabled = False
 
 [twitter_api]
 consumer_key = your_api_key
