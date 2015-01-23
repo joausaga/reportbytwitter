@@ -63,17 +63,23 @@ programed to sinchronize its content with a remote platform.
 Use Case
 -----------
 
-Participa is currently being used as part of the project [California Report Card](http://www.californiareportcard.org), a jointly
+Participa is currently being used as part of the project [California Report Card](http://www.californiareportcard.org) -- a jointly
 coordinated effort between the [Data and Democracy Initiative](http://citris-uc.org/initiatives/democracy/) of the Center 
 for Information Technology Research in the Interest of Society (CITRIS) of the University of California, Berkeley and the 
 Lt. Governor of California Gavin Newsom. 
 
-By employing a web-based application California Report Card engages citizens in discussion about timely issues. It also
-allows to 
+By employing a web-based application California Report Card (CRC) engages citizens in discussion about public concern issues. 
+Specifically, it allows to grade California in six timely topics and to to propose issues that merit the attention of the state 
+government. The following picture illustrates CRC application. On the left, the alphabetical pad used to grade the pre-defined
+topics, while on the right the section in which the participants can make a suggestion about topics to be included in
+next versions of CRC.
 
-<img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.JPG" height="40%" width="40%" />
+<img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.JPG" height="50%" width="50%" />
 &nbsp;&nbsp;&nbsp;
-<img alt="CRC TW Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshot.png" height="40%" width="40%" />
+<img alt="CRC Screenshot 2" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot_2.JPG" height="50%" width="50%" />
+
+
+<img alt="CRC TW Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshot.png" />
 
 Installation
 ------------
