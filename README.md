@@ -72,6 +72,8 @@ By employing a web-based application California Report Card engages citizens in 
 allows to 
 
 <img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.JPG" height="40%" width="40%" />
+&nbsp;&nbsp;&nbsp;
+<img alt="CRC TW Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshot.png" height="40%" width="40%" />
 
 Installation
 ------------
@@ -100,19 +102,13 @@ Installation
 
 6. Run `python manage.py migrate` to set up the database schema
 
-7. Create a [Twitter application](https://apps.twitter.com)
+7. Create a [Twitter application](https://apps.twitter.com) and give it read and write permissions
 
 7. Rename the file cparte/config.sample to cparte/config
 
-8. Apply the following configuration to cparte/config (only it is indicated the parameters that are needed to change)
+8. Set the Twitter application credentials in cparte/config
 
     ```
-        [app]
-        subdomain = ""  (if running in localhost)
-        
-        [url_shortener]
-        enabled = False
-        
         [twitter_api]
         consumer_key = YOUR_TWITTER_APP_CONSUMER_KEY
         consumer_secret = YOUR_TWITTER_APP_CONSUMER_SECRET
