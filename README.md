@@ -57,9 +57,8 @@ campaigns and challenges, and the hashtags to be used.
 3. Citizens, which are users of the social networks where the initiative was deployed, engage by publishing posts 
 containing the hashtags of the initiative and the challenge that are answering.
 4. As soon as participa finds posts containing the hashtags of the initiative and challenges, it collects, processes them. 
-Through a tabular-based dashboard the answers are presented to the initiative's organizer. Features to graphically 
-represent the answers are upcoming. In addition, the platform can be hacked to send the collected opinions/ideas/suggestions
-to an external platform.
+Through a tabular-based dashboard the answers are presented to the initiative's organizer. In addition, participa can be 
+programed to sinchronize its content with a remote platform.
 
 Use Case
 -----------
@@ -72,7 +71,7 @@ Lt. Governor of California Gavin Newsom.
 By employing a web-based application California Report Card engages citizens in discussion about timely issues. It also
 allows to 
 
-<img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.png" />
+<img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.JPG" />
 
 Installation
 ------------
