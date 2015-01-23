@@ -71,12 +71,9 @@ Lt. Governor of California Gavin Newsom.
 By employing a web-based application California Report Card (CRC) engages citizens in discussion about public concern issues. 
 Specifically, it allows to grade California in six timely topics and to to propose issues that merit the attention of the state 
 government. The following picture illustrates CRC application. On the left, the alphabetical pad used to grade the pre-defined
-topics, while on the right the section in which the participants can make a suggestion about topics to be included in
-next versions of CRC.
+topics, while on the right the section in which participants can suggest topics to be included in the next versions of CRC.
 
-<img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.JPG" height="30%" width="30%" />
-&nbsp;&nbsp;&nbsp;
-<img alt="CRC Screenshot 2" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot_2.JPG" height="30%" width="30%" />
+<img alt="CRC Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshots.png" height="70%" width="70%" />
 
 
 <img alt="CRC TW Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshot.png" height="70%" width="70%" />
