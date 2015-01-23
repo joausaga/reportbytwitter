@@ -74,9 +74,9 @@ government. The following picture illustrates CRC application. On the left, the 
 topics, while on the right the section in which the participants can make a suggestion about topics to be included in
 next versions of CRC.
 
-<img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.JPG" height="50%" width="50%" />
+<img alt="CRC Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot.JPG" height="30%" width="30%" />
 &nbsp;&nbsp;&nbsp;
-<img alt="CRC Screenshot 2" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot_2.JPG" height="40%" width="40%" />
+<img alt="CRC Screenshot 2" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshot_2.JPG" height="30%" width="30%" />
 
 
 <img alt="CRC TW Screenshot" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshot.png" height="70%" width="70%" />
