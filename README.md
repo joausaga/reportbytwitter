@@ -66,25 +66,24 @@ Participa in action!
 in the Interest of Society (CITRIS) of the University of California, Berkeley and the Lt. Governor of California Gavin Newsom. 
 
 By employing a web-based application, it engages citizens in discussion about public concern issues. Specifically, 
-CRC allows Californians to grade six timely topics and to propose issues that merit the attention of the state 
-government. The left side of the following picture illustrates the alphabetical pad used to grade the pre-defined
-topics, while the right side shows the section in which participants are invited to suggest topics to be included in the 
-next versions of CRC.
+CRC allows, in a first phase, to grade six timely topics and, in a second phase, to propose issues that merit the attention 
+of the state government. The left side of the following picture illustrates the alphabetical pad used to grade the issues, 
+while the right side illustrates the second phase.
 
 <img alt="CRC Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshots.png" height="70%" width="70%" />
 
-Participa is currently being used to enable citizens of California to participate in CRC directly via Twitter. For doing so, 
-participa was configured in the following way. California Report Card and *#careportcard* were defined as the 
-**initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading" and "proposing", were set 
-as the **campaigns** of the initiatives. The six CRC issues were configured as the **challenges** of the grading campaign, 
+Participa is currently being used to enable citizens of California to participate in CRC directly via Twitter. In this case, 
+the model of participa was tuned in the following way. California Report Card and *#careportcard* were defined as the 
+**initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading issue" and "proposing issue", 
+were set as the **campaigns** of the initiatives. The six CRC issues were configured as the **challenges** of the grading campaign, 
 while the request for new issues was defined as the challenge of the proposing campaign. Each challenge was associated to
 a unique **hashtag**. Finally, Twitter was chosen as the **social network** to deploy the initiative.
 
-The following picture shows participa in action. On the left, a participant grading with C the affordability of California colleges 
-and universities (one of the six CRC discussion topics). In this sense, he attached to the grade the hashtag of the
-initiative, **#careportcard**, and the hashtag associated to the graded issue, **#affordcolleges**. A similar approach was 
-followed when proposing a new issue. As depicted on the right side of the picture, a participant sent his suggestion 
-together with the hashtag of the initiative, **#careportcard** and the hashtag of the "solved" challenge, **#newissue**.
+On the left of the next picture, it is represented an example of grading a CRC issue via Twitter. Basically, participants
+have to, simply, post the grade -- C in this case --, the hashtag of the initiative, **#careportcard**, and the hashtag 
+of associated to the issue, **#affordcolleges**. In a similar way, the right side of the picture illustrates how participants 
+can propose new issues through Twitter. Specifically, they send a suggestion together with the hashtag of the initiative, 
+**#careportcard** and the hashtag of the challenge, **#newissue**.
 
 <img alt="CRC TW Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshots.png" height="70%" width="70%" />
 
