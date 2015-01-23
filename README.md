@@ -41,8 +41,8 @@ issues to be discussed in the consultant. Further, it is included the explanatio
 the concepts.
   
 
-How is it work?
----------------
+Workflow
+--------
 
 Participa's operation is divided in four simple steps, as it is outlined in the following picture. 
 
@@ -58,8 +58,8 @@ can be programed to sinchronize its content with a remote platform.
 ![model](https://dl.dropboxusercontent.com/u/55956367/participa_model.png "Participa Model")
 
 
-Use Case
------------
+Participa in action!
+--------------------
 
 [California Report Card (CRC)](http://www.californiareportcard.org) is a jointly coordinated effort between the 
 [Data and Democracy Initiative](http://citris-uc.org/initiatives/democracy/) of the Center for Information Technology Research 
