@@ -84,9 +84,9 @@ the initiative.
 
 The following picture shows participa in action. On the left, a participant grading the issue of CRC related with the affordability
 of the state colleges and universities. For doing so, he attached to his grade the hashtag that identifies the initiative, 
-**#careportcard**, and the hashtag associated to the issue, **#affordcolleges**. A similar approach it was followed to propose a new
+**#careportcard**, and the hashtag associated to the issue, **#affordcolleges**. A similar approach was followed when proposing a new
 issue. As depicted in the right side of the picture, the participant sent his suggestion together with the hashtag of the initiative
-and the hashtag of the "performed" challenge, i.e. propose a new issue.
+and the hashtag of the "performed" challenge, **#newissue**.
 
 <img alt="CRC TW Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshots.png" height="70%" width="70%" />
 
