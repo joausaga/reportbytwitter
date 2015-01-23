@@ -90,6 +90,8 @@ and the hashtag of the "performed" challenge, **#newissue**.
 
 <img alt="CRC TW Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshots.png" height="70%" width="70%" />
 
+Additional information on how to take part of CRC through Twitter can be found [here](https://dl.dropboxusercontent.com/u/55956367/Flyer_CRC_Twitter.pdf).
+
 Installation
 ------------
 
