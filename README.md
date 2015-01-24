@@ -29,11 +29,8 @@ initiatives. Its operation is based on **hashtags**. Because of this, it can wor
 networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Currently, *only Twitter is available*.
 
 The remaining concepts of participa's model are the initiatives, campaigns, and challenges, which help to structure and
-organize the consultants facilitating the analysis of the results. The **initiatives** are the elements in which the 
-details about the public consultants are specified. In the initiative the organizer, whoever public institution, elected 
-authority, politician, civic organization, defines the hashtag that will allow to identify the consultant and the social 
-network in which the consultant will be run. To avoid error collecting posts related to the consultant the initiative 
-hashtag should be chosen carefully. 
+organize the consultants facilitating the analysis of the results. The **initiative** is the container of the consultant 
+details. There the organizer, whoever public institution, elected authority, politician, civic organization, defines the name, the goals, the hashtag that will be used to identify the consultant and the social network in which the consultant will be run. To avoid error collecting posts related to the consultant the initiative hashtag should be chosen carefully. 
 
 In participa's model, each initiative is composed of one or more **campaigns**, which are the phases or stages in which 
 the process of a consultant is divided in. Finally, campaigns contain **challenges**, which are the questions, topics, or 
@@ -73,17 +70,10 @@ while the right side illustrates the second phase.
 <img alt="CRC Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshots.png" height="70%" width="70%" />
 
 Participa is currently being used to enable citizens of California to participate in CRC directly via Twitter. In this case, 
-the model of participa was tuned in the following way. California Report Card and *#careportcard* were defined as the 
-**initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading issues" and "proposing issues", 
-were set as the **campaigns** of the initiative. The six CRC issues were configured as the **challenges** of the grading campaign, 
-while the request for new issues was defined as the challenge of the proposing campaign. Each challenge was associated to
-a unique **hashtag**. Finally, Twitter was chosen as the **social network** to deploy the initiative.
+the following initiative, campaigns, challenges and hashtags were created. California Report Card and *#careportcard* were defined as the **initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading issues" and "proposing new issues", were set as the **campaigns** of the initiative. The six CRC issues were configured as the **challenges** of the grading campaign, while the request for new issues was defined as the challenge of the proposing campaign. Each challenge was associated to a unique **hashtag**. Finally, Twitter was chosen as the **social network** to deploy the initiative.
 
-On the left of the next picture, it is represented an example of grading a CRC issue via Twitter. Basically, participants
-have to, simply, post the grade -- C in this case --, the hashtag of the initiative, **#careportcard**, and the hashtag 
-of associated to the issue, **#affordcolleges**. In a similar way, the right side of the picture illustrates how participants 
-can propose new issues through Twitter. Specifically, they send a suggestion together with the hashtag of the initiative, 
-**#careportcard** and the hashtag of the challenge, **#newissue**.
+On the left of the next picture, it is represented an example of grading a CRC issue via Twitter. Basically, it is
+simply required to post a tweet with the grade -- C in this case --, the hashtag of the initiative, **#careportcard**, and the hashtag of associated to the issue, **#affordcolleges**. In a similar way, the right side of the picture illustrates how participants can propose new issues through tweets. Specifically, they send a suggestion together with the hashtag of the initiative, **#careportcard**, and the hashtag of the challenge, **#newissue**.
 
 <img alt="CRC TW Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshots.png" height="70%" width="70%" />
 
