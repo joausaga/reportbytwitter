@@ -30,7 +30,7 @@ networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Current
 
 The remaining concepts of participa's model are the initiatives, campaigns, and challenges, which help to structure and
 organize the consultants facilitating the analysis of the results. The **initiative** is the container of the consultant 
-details. There the organizer, whoever public institution, elected authority, politician, civic organization, defines the name, the goals, the hashtag that will be used to identify the consultant and the social network in which the consultant will be run. To avoid error collecting posts related to the consultant the initiative hashtag should be chosen carefully. 
+details. There the organizer, whoever public institution, elected authority, politician, civic organization, defines the name, and description of the consultant, as well as, the hashtag that will be used to identify the consultant and the social network in which the consultant will be run. To avoid error collecting posts related to the consultant the initiative hashtag should be chosen carefully. 
 
 In participa's model, each initiative is composed of one or more **campaigns**, which are the phases or stages in which 
 the process of a consultant is divided in. Finally, campaigns contain **challenges**, which are the questions, topics, or 
