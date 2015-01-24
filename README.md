@@ -129,7 +129,7 @@ MIT
 Technologies
 ------------
 
-1. [Django Framework > 1.7](https://www.djangoproject.com/)
+1. [Django Framework 1.7](https://www.djangoproject.com/)
 2. [MySQL](http://www.mysql.com) database and its corresponding python package
 3. [Tweepy](http://www.tweepy.org) a python-based Twitter API client
 4. [Django Admin Bootstrapped App](https://riccardo.forina.me/bootstrap-your-django-admin-in-3-minutes)
