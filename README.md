@@ -110,7 +110,7 @@ Installation
 
 7. Rename the file cparte/config.sample to cparte/config
 
-8. Set the Twitter application credentials in cparte/config
+8. Set the parameters of your recently created Twitter application in cparte/config
 
     ```
         [twitter_api]
