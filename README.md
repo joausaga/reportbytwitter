@@ -10,7 +10,7 @@ policy making and innovations in the public sector. Reaching large and diverse g
 in such initiatives. 
 
 Understanding that the the biggest virtual communities are found nowadays in social networking sites, such as Facebook, 
-Twitter, or Google Plus, we are interested in involving them them into the emerging internet-mediated civic participation 
+Twitter, or Google Plus, we are interested in involving them into the emerging internet-mediated civic participation 
 initiatives. In this sense, **Participa** is an effort to: *(i)* support the execution of public consultants, idea campaigns, 
 and opinion polls directly in social networking sites; and *(ii)* enrich and complement existing online civic participation 
 initiatives with the expertise, knowledge, and opinions generated within social network communities. 
