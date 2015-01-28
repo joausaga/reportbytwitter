@@ -122,6 +122,8 @@ Installation
 
 9. Load initial settings `python manage.py loaddata config_data.json`
 
+10. Install Rabbit MQ broker. [Unix installation instructions](http://www.rabbitmq.com/install-generic-unix.html)
+
 License
 -------
 MIT
@@ -137,7 +139,7 @@ Technologies
 6. [Google API Client](https://developers.google.com/api-client-library/python/)
 7. [Celery](http://www.celeryproject.org)
 8. [Celery for Django](http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html)
-9. [Rabbit MQ](http://www.rabbitmq.com/install-generic-unix.html)
+9. [Rabbit MQ](http://www.rabbitmq.com)
 
 Let me know
 -----------
