@@ -5,11 +5,10 @@ Improving democracy is probably one of today’s biggest societal challenges. Mo
 efforts of the Obama’s administration, an increasing number of governments, public institutions, politicians and 
 civic organizations have started to take actions toward more inclusive, transparent and participatory administrations. 
 Boosted by the World Wide Web, online civic-engagement practices have been appearing all over the world seeking to involve 
-citizens in public consultations and decision-making processes oriented to address public interest issues, such as law reforms, 
-policy making and innovations in the public sector. Reaching large and diverse groups of participants is key to success 
+citizens in public consultations and decision-making processes oriented to address public interest issues, such as law reforms, policy making and innovations in the public sector. Reaching large and diverse groups of participants is key to success 
 in such initiatives. 
 
-Understanding that the the biggest virtual communities are found nowadays in social networking sites, such as Facebook, 
+Understanding that today the biggest virtual communities can be found in social networking sites, such as Facebook, 
 Twitter, or Google Plus, we are interested in involving them into the emerging internet-mediated civic participation 
 initiatives. In this sense, **Participa** is an effort to: *(i)* support the execution of public consultants, idea campaigns, 
 and opinion polls directly in social networking sites; and *(ii)* enrich and complement existing online civic participation 
