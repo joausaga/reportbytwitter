@@ -24,9 +24,8 @@ and diversity. It can be used as a stand-alone application or it can be integrat
 Model
 -----
 Participa exploits the power and advantages (user-friendliness, worldwide connectivity, real-time information sharing) of
-general purpose **social networks** to reach and engage the biggest virtual communities into online civic participation 
-initiatives. Its operation is based on **hashtags**. Because of this, it can work only with hashtag-supported social 
-networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Currently, *only Twitter is available*.
+general purpose **social network services** to reach and engage social network communities into online civic participation 
+initiatives. Its operation is based mainly on social networks' native features: posts, comments, votes (likes, +1), hashtags. **Hashtags** are particularly important and because of this, it may work only on hashtag-supported social networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Currently, *only Twitter is available*.
 
 The remaining concepts of participa's model are the initiatives, campaigns, and challenges, which help to structure and
 organize the consultants facilitating the analysis of the results. The **initiative** is the container of the consultant 
