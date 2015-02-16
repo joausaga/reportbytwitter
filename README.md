@@ -5,17 +5,17 @@ Citizens’ participation in the democratic life — either local or national �
 
 Boosted by the World Wide Web, online civic-engagement practices have been appearing all over the world seeking to involve citizens in public consultations, deliberation, and decision-making processes oriented to address issues of public interest, such as law reforms, policy making and innovations in the public sector. In this context, innovative ideas and valuable opinions are more likely to appear when the group of participants is large and diverse. 
 
-Understanding that the largest virtual communities today are to be found in popular social networking sites, such as Facebook, Twitter, or Google Plus, *Participa* is a concrete effort toward bringing internet-mediated civic participation tools closer to these large online communities. Apart from reaching wider and larger sources of information, we aim at reducing as much as possible the participation barrier, enabling people to take part on modern civic engagement initiatives by using familiar technology, such as social networking services.
+Understanding that the largest virtual communities today are to be found in popular social networking sites, such as Facebook, Twitter, or Google Plus, **Participa** is a concrete effort toward bringing internet-mediated civic participation tools closer to these large online communities. Apart from reaching wider and larger sources of information, we aim at reducing as much as possible the participation barrier, enabling people to take part on modern civic engagement initiatives by using familiar technology, such as social networking services.
  
-By providing a flexible and generic model, *Participa* enables public institutions, politicians, and elected authorities to efficiently organize, run, and harvest the information generated during civic participation initiatives. It also allows to enrich and complement already existing initiatives with opinions generated within social network communities. 
+By providing a flexible and generic model, **Participa** enables public institutions, politicians, and elected authorities to efficiently organize, run, and harvest the information generated during civic participation initiatives. It also allows to enrich and complement already existing initiatives with opinions generated within social network communities. 
 
 It is social network "agnostic" making possible to reach different social network communities simultaneously, favoring inclusiveness and diversity. It can be used as a stand-alone application or it can be integrated with existing tools. 
 
 Model
 -----
 Participa exploits the power and advantages (user-friendliness, worldwide connectivity, real-time information sharing) of
-general purpose **social network services** to reach and engage social network communities into online civic participation 
-initiatives. Its operation is based mainly on social networks' native features: posts, comments, votes (likes, +1), hashtags. **Hashtags** are particularly important and because of this, it may work only on hashtag-supported social networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Currently, *only Twitter is available*.
+**social network services** to reach and engage social network communities into online civic participation 
+initiatives. It leverages almost its full operation on the native and ubiquitous features of social networks: posts, comments, votes (rt, likes, +1), and hashtags. In particular, **hashtags** play an important role since they are the mechanism used by **Participa** to identify, collect, and classify the information generated within the consultations or campaigns. Because of this, it can work only on hashtag-supported social networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Currently, *only Twitter is supported*.
 
 The remaining concepts of participa's model are the initiatives, campaigns, and challenges, which help to structure and
 organize the consultants facilitating the analysis of the results. The **initiative** is the container of the consultant 
