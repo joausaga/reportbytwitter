@@ -51,7 +51,7 @@ Participa is currently being used to enable citizens of California to participat
 The California Report Card and *#careportcard* were defined as the **initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading issues" and "proposing new issues", were set as the **campaigns** of the initiative. The six CRC issues were configured as the **challenges** of the grading campaign, while the request for new issues was defined as the challenge of the proposing campaign. Each challenge was associated to a unique **hashtag**. Finally, Twitter was chosen as the **social network** to deploy the initiative.
 
 On the left of the next picture, it is represented an example of grading a CRC issue via Twitter. Basically, it is
-simply required to post a tweet with the grade -- C in this case --, the hashtag of the initiative, **#careportcard**, and the hashtag of associated to the issue, **#affordcolleges**. In a similar way, the right side of the picture illustrates how participants can propose new issues through tweets. Specifically, they send a suggestion together with the hashtag of the initiative, **#careportcard**, and the hashtag of the challenge, **#newissue**.
+simply required to post a tweet with the grade — C in this case  —, the hashtag of the initiative, **#careportcard**, and the hashtag associated to the issue, **#affordcolleges**. The right side of the picture illustrates how participants can propose new issues through Twitter. Specifically, they send a suggestion together with the hashtag of the initiative, **#careportcard**, and the hashtag of the challenge, **#newissue**.
 
 <img alt="CRC TW Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshots.png" height="70%" width="70%" />
 
