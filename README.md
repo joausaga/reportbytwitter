@@ -9,7 +9,7 @@ Understanding that the largest virtual communities today are to be found in popu
  
 By providing a flexible and generic model, *Participa* enables public institutions, politicians, and elected authorities to efficiently organize, run, and harvest the information generated during civic participation initiatives. It also allows to enrich and complement already existing initiatives with opinions generated within social network communities. 
 
-It is social network "agnostic" making possible to reach different social network communities simultaneously, favoring inclusiveness and broadness. It can be used as a stand-alone application or it can be integrated with existing tools. 
+It is social network "agnostic" making possible to reach different social network communities simultaneously, favoring inclusiveness and diversity. It can be used as a stand-alone application or it can be integrated with existing tools. 
 
 Model
 -----
