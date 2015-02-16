@@ -14,18 +14,10 @@ It is social network "agnostic" making possible to reach different social networ
 Model
 -----
 Participa exploits the power and advantages (user-friendliness, worldwide connectivity, real-time information sharing) of
-**social network services** to reach and engage social network communities into online civic participation 
-initiatives. It leverages almost its full operation on the native and ubiquitous features of social networks: posts, comments, votes (rt, likes, +1), and hashtags. In particular, **hashtags** play an important role since they are the mechanism used by **Participa** to identify, collect, and classify the information generated within the consultations or campaigns. Because of this, it can work only on hashtag-supported social networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Currently, *only Twitter is supported*.
+social network services to reach and engage social network communities into online civic participation 
+initiatives. It leverages, almost, its full operation on the native and ubiquitous features of social networks: posts, comments, votes (rt, likes, +1), and hashtags. In particular, **hashtags** play an important role since they are the mechanism used by Participa to identify, collect, and classify the information generated within the consultations. Because of this, it can work only on hashtag-supported social networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Currently, *only Twitter is supported*.
 
-The remaining concepts of participa's model are the initiatives, campaigns, and challenges, which help to structure and
-organize the consultants facilitating the analysis of the results. The **initiative** is the container of the consultant 
-details. There the organizer, whoever public institution, elected authority, politician, civic organization, defines the name and description of the consultant, as well as, the hashtag that will be used to identify the consultant and the social network in which the consultant will be run. To avoid error collecting posts related to the consultant the initiative hashtag should be chosen carefully. 
-
-In participa's model, each initiative is composed of one or more **campaigns**, which are the phases or stages in which 
-the process of a consultant is divided in. Finally, campaigns contain **challenges**, which are the questions, topics, or 
-issues to be discussed in the consultant. Further, it is included the explanation of real use case scenario to ground 
-the concepts.
-  
+In participa's model the consultantions (ideation, deliberation) are structured in hierarchical model composed of three elements: initiatives, campaigns, and challenges. The **initiative** is the container of the consultant details. There, the organizer, whoever public institution, elected authority, politician, civic organization, defines the name and description of the consultant, as well as, the hashtag that will be used to identify the information generated within the consultant and the social network in which the consultant will be run. Initiatives are composed of one or more **campaigns**, which are the phases or stages in which the consultant process is divided into. Finally, campaigns contain **challenges**, which are the questions, topics, or issues to be discussed in the consultant.
 
 Workflow
 --------
