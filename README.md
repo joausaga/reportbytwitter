@@ -7,7 +7,9 @@ Boosted by the World Wide Web, online civic-engagement practices have been appea
 
 Understanding that the largest virtual communities today are to be found in popular social networking sites, such as Facebook, Twitter, or Google Plus, *Participa* is a concrete effort toward bringing internet-mediated civic participation tools closer to these large online communities. Apart from reaching wider and larger sources of information, we aim at reducing as much as possible the participation barrier, enabling people to take part on modern civic engagement initiatives by using familiar technology, such as social networking services.
  
-By providing a flexible and generic model, *Participa* enables public institutions, politicians, and elected authorities to efficiently organize, run, and harvest the information generated during civic participation initiatives. It also allows to enrich and complement already existing initiatives with opinions generated within social network communities.It is social network "agnostic" making possible to reach different social network communities simultaneously, favoring inclusiveness and broadness. It can be used as a stand-alone application or it can be integrated with existing tools. 
+By providing a flexible and generic model, *Participa* enables public institutions, politicians, and elected authorities to efficiently organize, run, and harvest the information generated during civic participation initiatives. It also allows to enrich and complement already existing initiatives with opinions generated within social network communities. 
+
+It is social network "agnostic" making possible to reach different social network communities simultaneously, favoring inclusiveness and broadness. It can be used as a stand-alone application or it can be integrated with existing tools. 
 
 Model
 -----
