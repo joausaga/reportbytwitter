@@ -24,10 +24,10 @@ Workflow
 
 Participa's operation is divided in four simple steps, as it is outlined in the following picture. 
 
-1. A public institution (politician, elected authority, civic organization) creates an initiative, its corresponding 
-campaigns and challenges, and the hashtags to be used.
-2. The initiative's organizer (a public institution in this case) "deploys" the initiative in one or multiple social networks.
-3. Citizens, which are users of the social networks where the initiative was deployed, engage in the initiative by 
+* A public institution (politician, elected authority, civic organization) creates an initiative, its corresponding 
+campaigns and challenges, and the hashtags to be used (step 1).
+* The initiative's organizer (a public institution in this case) "deploys" the initiative in one or multiple social networks.
+3. Citizens, which are users of the social networks where the initiative was deployed, engage by 
 publishing posts containing the hashtags of the initiative and hashtag the challenge that are "solving".
 4. As soon as participa finds posts containing the hashtags of the initiative and challenges, it collects and processes 
 them. Through a tabular-based dashboard the answers are presented to the initiative's organizer. In addition, participa 
