@@ -37,7 +37,7 @@ them. Through a tabular-based dashboard the answers are presented to the initiat
 Participa in action!
 --------------------
 
-[California Report Card (CRC)](http://www.californiareportcard.org) is a jointly coordinated effort between the 
+[The California Report Card (CRC)](http://www.californiareportcard.org) is a jointly coordinated effort between the 
 [Data and Democracy Initiative](http://citris-uc.org/initiatives/democracy/) of the Center for Information Technology Research in the Interest of Society (CITRIS) of the University of California, Berkeley and the Lt. Governor of California Gavin Newsom. 
 
 By employing a web-based application, it engages citizens in discussion about public concern issues. Specifically, 
