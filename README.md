@@ -41,7 +41,7 @@ Participa in action!
 [Data and Democracy Initiative](http://citris-uc.org/initiatives/democracy/) of the Center for Information Technology Research in the Interest of Society (CITRIS) of the University of California, Berkeley and the Lt. Governor of California Gavin Newsom. 
 
 By employing a web-based application, it engages citizens in discussion about public concern issues. Specifically, 
-CRC allows, in a first phase, to grade six timely topics and, in a second phase, to propose issues that merit the attention 
+CRC allows, in a first phase, to grade six timely topics and, in a second phase, to propose ideas that merit the attention 
 of the state government. The left side of the following picture illustrates the alphabetical pad used in the grading phase, 
 while the right side illustrates the user-interface of the ideation phase.
 
