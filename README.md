@@ -1,56 +1,35 @@
 Participa
 =========
 
-Improving democracy is probably one of today’s biggest societal challenges. Motivated by the [Open Government](https://petitions.whitehouse.gov) 
-efforts of the Obama’s administration, an increasing number of governments, public institutions, politicians and 
-civic organizations have started to take actions toward more inclusive, transparent and participatory administrations. 
-Boosted by the World Wide Web, online civic-engagement practices have been appearing all over the world seeking to involve 
-citizens in public consultations and decision-making processes oriented to address public interest issues, such as law reforms, 
-policy making and innovations in the public sector. Reaching large and diverse groups of participants is key to success 
-in such initiatives. 
+Citizens’ participation in the democratic life — either local or national — is one of the most urgent and challenging issues of today’s societies. Motivated by the efforts of the governments of [Iceland](http://en.wikipedia.org/wiki/Icelandic_constitutional_reform,_2010%E2%80%9313), [Finland](http://thegovlab.org/seven-lessons-from-the-crowdsourced-law-reform-in-finland/) and [United States](https://petitions.whitehouse.gov), an increasing number of elected authorities and political leaders have begun to take actions toward more inclusive, transparent and participatory administrations. 
 
-Understanding that the the biggest virtual communities are found nowadays in social networking sites, such as Facebook, 
-Twitter, or Google Plus, we are interested in involving them into the emerging internet-mediated civic participation 
-initiatives. In this sense, **Participa** is an effort to: *(i)* support the execution of public consultants, idea campaigns, 
-and opinion polls directly in social networking sites; and *(ii)* enrich and complement existing online civic participation 
-initiatives with the expertise, knowledge, and opinions generated within social network communities. 
+Boosted by the World Wide Web, online civic-engagement practices have been appearing all over the world seeking to involve citizens in public consultations, deliberation, and decision-making processes oriented to address issues of public interest, such as law reforms, policy making and innovations in the public sector. In this context, innovative ideas and valuable opinions are more likely to appear when the group of participants is large and diverse. 
 
-It provides a flexible and generic model that enables public institutions, politicians, and elected authorities to 
-efficiently organize, run, and process the information generated during the civic participation initiatives. It is social 
-network "agnostic" making possible to reach different social network communities simultaneously, favoring inclusiveness 
-and diversity. It can be used as a stand-alone application or it can be integrated with already using existing tools.
+Understanding that the largest virtual communities today are to be found in popular social networking sites, such as Facebook, Twitter, or Google Plus, **Participa** is a concrete effort toward bringing internet-mediated civic participation tools closer to these large online communities. Apart from reaching wider and larger sources of information, we aim at reducing as much as possible the participation barrier, enabling people to take part on modern civic engagement initiatives by using familiar technology, such as social networking services.
+ 
+By providing a flexible and generic model, **Participa** enables public institutions, politicians, and elected authorities to efficiently organize, run, and harvest the information generated during civic participation initiatives. It also allows to enrich and complement already existing initiatives with opinions generated within social network communities. 
 
+It is social network "agnostic" making possible to reach different social network communities simultaneously, favoring inclusiveness and diversity. It can be used as a stand-alone application or it can be integrated with existing tools. 
 
 Model
 -----
 Participa exploits the power and advantages (user-friendliness, worldwide connectivity, real-time information sharing) of
-general purpose **social networks** to reach and engage the biggest virtual communities into online civic participation 
-initiatives. Its operation is based on **hashtags**. Because of this, it can work only with hashtag-supported social 
-networking sites, such as Twitter, Facebook, Google Plus, and Instagram. Currently, *only Twitter is available*.
+social network services to reach and engage social network communities into online civic participation 
+initiatives. It leverages, almost, its full operation on the native and ubiquitous features of social networks: posts, comments, votes (rt, likes, +1), and hashtags. In particular, **hashtags** play an important role since they are the mechanism used by Participa to identify, collect, and classify the information generated within the consultations. Because of this, it can only work on hashtag-supported social networking sites, like Twitter, Facebook, and Google Plus. Currently, *only Twitter is supported*.
 
-The remaining concepts of participa's model are the initiatives, campaigns, and challenges, which help to structure and
-organize the consultants facilitating the analysis of the results. The **initiative** is the container of the consultant 
-details. There the organizer, whoever public institution, elected authority, politician, civic organization, defines the name and description of the consultant, as well as, the hashtag that will be used to identify the consultant and the social network in which the consultant will be run. To avoid error collecting posts related to the consultant the initiative hashtag should be chosen carefully. 
-
-In participa's model, each initiative is composed of one or more **campaigns**, which are the phases or stages in which 
-the process of a consultant is divided in. Finally, campaigns contain **challenges**, which are the questions, topics, or 
-issues to be discussed in the consultant. Further, it is included the explanation of real use case scenario to ground 
-the concepts.
-  
+In participa's model the consultantions (ideation, deliberation) are structured in a hierarchical model composed of three elements: initiatives, campaigns, and challenges. The **initiative** is the container of the consultant details. There, the organizer, whoever public institution, elected authority, politician, civic organization, defines the name and description of the consultant, as well as, the hashtag that will be used to identify the information generated within the consultant and the social network in which the consultant will be run. Initiatives are composed of one or more **campaigns**, which are the phases or stages in which the consultant process is divided into. Finally, campaigns contain **challenges**, which are the questions, topics, or issues to be discussed in the consultantion.
 
 Workflow
 --------
 
 Participa's operation is divided in four simple steps, as it is outlined in the following picture. 
 
-1. A public institution (politician, elected authority, civic organization) creates an initiative, its corresponding 
-campaigns and challenges, and the hashtags to be used.
-2. The initiative's organizer (a public institution in this case) "deploys" the initiative in one or multiple social networks.
-3. Citizens, which are users of the social networks where the initiative was deployed, engage in the initiative by 
-publishing posts containing the hashtags of the initiative and hashtag the challenge that are "solving".
-4. As soon as participa finds posts containing the hashtags of the initiative and challenges, it collects and processes 
-them. Through a tabular-based dashboard the answers are presented to the initiative's organizer. In addition, participa 
-can be programed to sinchronize its content with a remote platform.
+* A public institution (politician, elected authority, civic organization) creates an initiative, its corresponding 
+campaigns and challenges, and the hashtags to be used (step 1).
+* The initiative's organizer (a public institution in this case) "deploys" the initiative in one or multiple social networks (step 2).
+* Citizens, which are users of the social networks where the initiative was deployed, engage by publishing posts containing the hashtags of the initiative and the hashtag of the challenge willing to "solve" (step 3).
+* As soon as Participa finds posts containing the hashtags of one of its registered initiative, it collects and processes 
+them. Through a tabular-based dashboard the answers are presented to the initiative's organizer (step 4). In addition, participa can be programed to sinchronize its content with a remote platform.
 
 ![model](https://dl.dropboxusercontent.com/u/55956367/participa_model.png "Participa Model")
 
@@ -58,22 +37,21 @@ can be programed to sinchronize its content with a remote platform.
 Participa in action!
 --------------------
 
-[California Report Card (CRC)](http://www.californiareportcard.org) is a jointly coordinated effort between the 
-[Data and Democracy Initiative](http://citris-uc.org/initiatives/democracy/) of the Center for Information Technology Research 
-in the Interest of Society (CITRIS) of the University of California, Berkeley and the Lt. Governor of California Gavin Newsom. 
+[The California Report Card (CRC)](http://www.californiareportcard.org) is a jointly coordinated effort between the 
+[Data and Democracy Initiative](http://citris-uc.org/initiatives/democracy/) of the Center for Information Technology Research in the Interest of Society (CITRIS) of the University of California, Berkeley and the Lt. Governor of California Gavin Newsom. 
 
 By employing a web-based application, it engages citizens in discussion about public concern issues. Specifically, 
-CRC allows, in a first phase, to grade six timely topics and, in a second phase, to propose issues that merit the attention 
-of the state government. The left side of the following picture illustrates the alphabetical pad used to grade the issues, 
-while the right side illustrates the second phase.
+CRC allows, in a first phase, to grade six timely topics and, in a second phase, to propose ideas that merit the attention 
+of the state government. The left side of the following picture illustrates the alphabetical pad used in the grading phase, 
+while the right side illustrates the user-interface of the ideation phase.
 
 <img alt="CRC Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshots.png" height="70%" width="70%" />
 
 Participa is currently being used to enable citizens of California to participate in CRC directly via Twitter. In this case, 
-the following initiative, campaigns, challenges and hashtags were created. California Report Card and *#careportcard* were defined as the **initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading issues" and "proposing new issues", were set as the **campaigns** of the initiative. The six CRC issues were configured as the **challenges** of the grading campaign, while the request for new issues was defined as the challenge of the proposing campaign. Each challenge was associated to a unique **hashtag**. Finally, Twitter was chosen as the **social network** to deploy the initiative.
+The California Report Card and *#careportcard* were defined as the **initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading issues" and "proposing new issues", were set as the **campaigns** of the initiative. The six CRC issues were configured as the **challenges** of the grading campaign, while the request for new issues was defined as the challenge of the proposing campaign. Each challenge was associated to a unique **hashtag**. Finally, Twitter was chosen as the **social network** to deploy the initiative.
 
 On the left of the next picture, it is represented an example of grading a CRC issue via Twitter. Basically, it is
-simply required to post a tweet with the grade -- C in this case --, the hashtag of the initiative, **#careportcard**, and the hashtag of associated to the issue, **#affordcolleges**. In a similar way, the right side of the picture illustrates how participants can propose new issues through tweets. Specifically, they send a suggestion together with the hashtag of the initiative, **#careportcard**, and the hashtag of the challenge, **#newissue**.
+simply required to post a tweet with the grade — C in this case  —, the hashtag of the initiative, **#careportcard**, and the hashtag associated to the issue, **#affordcolleges**. The right side of the picture illustrates how participants can propose new issues through Twitter. Specifically, they send a suggestion together with the hashtag of the initiative, **#careportcard**, and the hashtag of the challenge, **#newissue**.
 
 <img alt="CRC TW Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshots.png" height="70%" width="70%" />
 
