@@ -101,7 +101,8 @@ class Twitter(SocialNetwork):
         try:
             stream.filter(follow=accounts, track=hashtags, stall_warnings=True)
         except Exception as e:
-            logger.critical(traceback.format_exc())
+            logger.error(traceback.format_exc())
+            channel_middleware.auto_recovery("Twitter")
 
     @staticmethod
     def send_message(message, type_msg, payload, recipient_id, channel_url):

@@ -1,3 +1,4 @@
+from celery.result import AsyncResult
 from django.utils import timezone
 from cparte.models import Channel, Initiative, Account, Campaign, AppPost, Challenge, ContributionPost
 from social_network import Twitter, Facebook, GooglePlus
@@ -151,6 +152,19 @@ def disconnect(channel_name):
         ch = Channel.objects.get(name=channel_name)
         task_id = ch.streaming_pid
         ch.disconnect()
-        return task_id
+        task = AsyncResult(task_id)
+        if not task.ready():
+            # Force to hangup if the channel wasn't disconnected already
+            task.revoke(terminate=True, signal='SIGTERM')
+            logger.info("Channel %s was forced to disconnect" % channel_name)
+        else:
+            logger.info("Channel %s was already disconnected" % channel_name)
     except Channel.DoesNotExist:
         logger.error("Cannot disconnect, channel %s couldn't be found" % channel_name)
+
+
+# Auto-recovery the channel when it crashes
+def auto_recovery(channel_name):
+    disconnect(channel_name)
+    initiative_ids = [1,2]  # Need to be dynamic
+    connect(initiative_ids, channel_name)

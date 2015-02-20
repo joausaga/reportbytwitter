@@ -1,4 +1,3 @@
-from celery.result import AsyncResult
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.conf import settings
@@ -38,14 +37,7 @@ def listen(request, channel_name):
 
 
 def hangup(request, channel_name):
-    task_id = channel_middleware.disconnect(channel_name)
-    task = AsyncResult(task_id)
-    if not task.ready():
-        # Force to hangup if the channel wasn't disconnected already
-        task.revoke(terminate=True, signal='SIGTERM')
-        logger.info("Channel %s was forced to disconnect" % channel_name)
-    else:
-        logger.info("Channel %s was already disconnected" % channel_name)
+    channel_middleware.disconnect(channel_name)
     config = ConfigParser.ConfigParser()
     config.read(os.path.join(settings.BASE_DIR, "cparte/config"))
     subdomain = config.get("app","subdomain")
