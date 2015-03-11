@@ -14,6 +14,9 @@ import signal
 import traceback
 import tweepy
 
+from tweepy.utils import import_simplejson
+json = import_simplejson()
+
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +193,44 @@ class TwitterListener(tweepy.StreamListener):
 
     def __init__(self):
         super(TwitterListener, self).__init__()
+
+    def on_data(self, raw_data):
+
+        try:
+            data = json.loads(raw_data)
+
+            if 'in_reply_to_status_id' in data:
+                status = tweepy.Status.parse(self.api, data)
+                if self.on_status(status) is False:
+                    return False
+            elif 'delete' in data:
+                delete = data['delete']['status']
+                if self.on_delete(delete['id'], delete['user_id']) is False:
+                    return False
+            elif 'event' in data:
+                status = tweepy.Status.parse(self.api, data)
+                if self.on_event(status) is False:
+                    return False
+            elif 'direct_message' in data:
+                status = tweepy.Status.parse(self.api, data)
+                if self.on_direct_message(status) is False:
+                    return False
+            elif 'friends' in data:
+                if self.on_friends(data['friends']) is False:
+                    return False
+            elif 'limit' in data:
+                if self.on_limit(data['limit']['track']) is False:
+                    return False
+            elif 'disconnect' in data:
+                if self.on_disconnect(data['disconnect']) is False:
+                    return False
+            elif 'warning' in data:
+                if self.on_warning(data['warning']) is False:
+                    return False
+            else:
+                logging.error("Unknown message type: " + str(raw_data))
+        except Exception as e:
+            logging.error("Could not be read the message: {}. Error {}".format(str(raw_data), e))
 
     def on_status(self, status):
         try:
