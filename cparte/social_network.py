@@ -200,6 +200,7 @@ class TwitterListener(tweepy.StreamListener):
         except Exception as e:
             logger.error("Could not be read the message: {}. Error {}".format(str(raw_data), e))
             return True
+        logger.info("Reading data in on_data method...")
         if 'in_reply_to_status_id' in data:
             status = tweepy.Status.parse(self.api, data)
             if self.on_status(status) is False:
