@@ -1,7 +1,7 @@
 Participa
 =========
 
-![handout](/figures_repo/rsz_handout_participa_2_logos.png?raw=true "Participa Handout")
+![handout](/figures/rsz_handout_participa_2_logos.png?raw=true "Participa Handout")
 
 Introduction
 ------------
