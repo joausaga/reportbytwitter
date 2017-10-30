@@ -1,7 +1,7 @@
 Participa
 =========
 
-![handout](https://www.dropbox.com/s/h8lwvxy2mvv5yn6/rsz_handout_participa_2_logos.png?dl=0 "Participa Handout")
+![handout](/figures_repo/rsz_handout_participa_2_logos.png?raw=true "Participa Handout")
 
 Introduction
 ------------
