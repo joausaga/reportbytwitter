@@ -36,7 +36,7 @@ campaigns and challenges, and the hashtags to be used (step 1).
 * As soon as Participa finds posts containing the hashtags of one of its registered initiative, it collects and processes 
 them. Through a tabular-based dashboard the answers are presented to the initiative's organizer (step 4). In addition, participa can be programed to sinchronize its content with a remote platform.
 
-![model](https://dl.dropboxusercontent.com/u/55956367/participa_model.png "Participa Model")
+![model](/figures/participa_model.png?raw=true "Participa Model")
 
 
 Participa in action!
@@ -50,7 +50,7 @@ CRC allows, in a first phase, to grade six timely topics and, in a second phase,
 of the state government. The left side of the following picture illustrates the alphabetical pad used in the grading phase, 
 while the right side illustrates the user-interface of the ideation phase.
 
-<img alt="CRC Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_screenshots.png" height="70%" width="70%" />
+<img alt="CRC Screenshots" src="figures/crc_screenshots.png" height="70%" width="70%" />
 
 Participa is currently being used to enable citizens of California to participate in CRC directly via Twitter. In this case, 
 The California Report Card and *#careportcard* were defined as the **initiative** and the initiative **hashtag**, respectively. The two phases of CRC, "grading issues" and "proposing new issues", were set as the **campaigns** of the initiative. The six CRC issues were configured as the **challenges** of the grading campaign, while the request for new issues was defined as the challenge of the proposing campaign. Each challenge was associated to a unique **hashtag**. Finally, Twitter was chosen as the **social network** to deploy the initiative.
@@ -58,9 +58,9 @@ The California Report Card and *#careportcard* were defined as the **initiative*
 On the left of the next picture, it is represented an example of grading a CRC issue via Twitter. Basically, it is
 simply required to post a tweet with the grade — C in this case  —, the hashtag of the initiative, **#careportcard**, and the hashtag associated to the issue, **#affordcolleges**. The right side of the picture illustrates how participants can propose new issues through Twitter. Specifically, they send a suggestion together with the hashtag of the initiative, **#careportcard**, and the hashtag of the challenge, **#newissue**.
 
-<img alt="CRC TW Screenshots" src="https://dl.dropboxusercontent.com/u/55956367/crc_tw_screenshots.png" height="70%" width="70%" />
+<img alt="CRC TW Screenshots" src="figures/crc_tw_screenshots.png" height="70%" width="70%" />
 
-Additional information on how to take part of CRC through Twitter can be found [here](https://dl.dropboxusercontent.com/u/55956367/Flyer_CRC_Twitter.pdf).
+Additional information on how to take part of CRC through Twitter can be found [here](figures/Flyer_CRC_Twitter.pdf).
 
 Installation
 ------------
